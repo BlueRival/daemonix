@@ -1,0 +1,24 @@
+{
+	"name":            "daemonix",
+	"description":     "Daemonix is a tool for deploying and managing NodeJS systems as a daemon in Linux/Unix environments.",
+	"version":         "0.0.1",
+	"author":          "Anthony Hildoer <anthony@bluerival.com>",
+	"repository":      {
+		"type": "git",
+		"url":  "git@github.com:BlueRival/daemonix.git"
+	},
+	"dependencies":    {
+		"async": "~0"
+	},
+	"devDependencies": {
+		"mocha": "~1"
+	},
+	"keywords":        [
+		"daemon",
+		"deployment"
+	],
+	"engines":         {
+		"node": ">=0.8.0"
+	},
+	"license":         "MIT"
+}
