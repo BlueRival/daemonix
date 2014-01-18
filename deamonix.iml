@@ -4,7 +4,8 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Node.js v0.10.21 Core Modules" level="application" />
+    <orderEntry type="library" name="Node.js v0.10.24 Core Modules" level="application" />
+    <orderEntry type="library" name="Node.js v0.10.23 Core Modules" level="application" />
   </component>
 </module>
 
