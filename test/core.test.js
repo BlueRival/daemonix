@@ -332,6 +332,7 @@ describe( 'Daemonix', function () {
           assert.strictEqual( AppConstructor, 1 );
           assert.strictEqual( AppInit, 1 );
           assert.strictEqual( AppDinit, 1 );
+          assert.strictEqual( globalProcess.exitCount, 1 );
 
           done();
         } catch ( e ) {
