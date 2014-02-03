@@ -2,31 +2,51 @@
 
 (function () {
 
-	var Daemonix = require( './lib/daemonix' );
+  var Daemonix = require( './lib/daemonix' );
+  var Container = require( 'sidi' ).Container;
+  var container = new Container();
+  var daemonix = null;
 
-	var daemonix = null;
+  container.set( 'cluster', require( 'cluster' ) );
+  container.set( 'os', require( 'os' ) );
+  container.set( 'process', process );
 
-	module.exports = function ( config ) {
+  module.exports = function ( config ) {
 
-		// only generate one of these
-		if ( daemonix === null ) {
+    // only generate one of these
+    if ( daemonix === null ) {
 
-			var Container = require( 'sidi' ).Container;
+      // allow overrides
+      if ( config instanceof Container ) {
 
-			var container = new Container();
+        var fields = [
+          'config',
+          'cluster',
+          'os',
+          'process',
+          'scribe'
+        ];
+        var field = null;
 
-			container.set( 'cluster', require( 'cluster' ) );
-			container.set( 'config', config );
-			container.set( 'os', require( 'os' ) );
-			container.set( 'process', process );
+        for ( var i = 0; i < fields.length; i++ ) {
+          field = config.get( fields[i] );
+          if ( typeof field !== 'undefined' ) {
+            container.set( fields[i], field );
+          }
+        }
 
-			daemonix = new Daemonix( container );
+      } else {
 
-		}
+        container.set( 'config', config );
 
-		return daemonix;
+        daemonix = new Daemonix( container );
 
-	};
+      }
+
+    }
+
+    return daemonix;
+
+  };
 
 })();
-
