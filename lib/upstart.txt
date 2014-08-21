@@ -17,7 +17,7 @@ env NODE_ENV="{{env}}"
 env NODE_USER="{{user}}"
 env NODE_LOG_DIR="/opt/var/log/{{daemon}}"
 env NODE_EXEC="server.js"
-env NODE_BIN="/opt/apps/{{daemon}}/current/nvm/v{{nodeVersion}}/bin/node"
+env NODE_BIN="/opt/apps/{{daemon}}/current/nvm/vCurrent/bin/node"
 env NODE_CLUSTER="auto"
 chdir "/opt/apps/{{daemon}}/current/src"
 
