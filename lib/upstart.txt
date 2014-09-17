@@ -16,6 +16,7 @@ kill timeout 300 # wait 300s between SIGTERM and SIGKILL
 env NODE_ENV="{{env}}"
 env NODE_USER="{{user}}"
 env NODE_LOG_DIR="/opt/var/log/{{daemon}}"
+env NODE_LOG_FILE="/opt/var/log/{{daemon}}/app.log"
 env NODE_EXEC="server.js"
 env NODE_BIN="/opt/apps/{{daemon}}/current/nvm/vCurrent/bin/node"
 env NODE_CLUSTER="auto"
@@ -34,4 +35,4 @@ pre-start script
         chown -R $NODE_USER:$NODE_USER $NODE_LOG_DIR /opt/apps/{{daemon}}
 end script
 
-exec $NODE_BIN $NODE_EXEC >> $NODE_LOG_DIR/app.log 2>&1
+exec $NODE_BIN $NODE_EXEC >> {{stdout}} 2>&1
