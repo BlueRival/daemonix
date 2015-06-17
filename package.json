@@ -1,7 +1,7 @@
 {
 	"name": "daemonix",
 	"description": "Daemonix is a tool for deploying and managing NodeJS systems as a daemon in Linux/Unix environments.",
-	"version": "0.4.3",
+	"version": "0.4.4",
 	"author": "Anthony Hildoer <anthony@bluerival.com>",
 	"repository": {
 		"type": "git",
