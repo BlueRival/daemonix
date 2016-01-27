@@ -7,6 +7,8 @@ unset NVM_NODEJS_ORG_MIRROR
 unset NODE_PATH
 unset NVM_BIN
 
-. $1/nvm.sh
-nvm install $2
+nodeVersion="${2}"
+export NVM_DIR="${1}"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm install $nodeVersion
 which node
