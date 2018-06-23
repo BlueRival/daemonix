@@ -1,34 +1,33 @@
 "use strict";
 
-var assert = require( 'assert' );
-var Container = require( 'sidi' ).Container;
-var Daemonix = require( '../lib/daemonix' );
-var EventEmitter = require( 'events' ).EventEmitter;
-var nextPid = 100;
+let assert = require( 'assert' );
+let Daemonix = require( '../lib/daemonix' );
+let EventEmitter = require( 'events' ).EventEmitter;
+let nextPid = 100;
 
 describe( 'Daemonix', function () {
 
-  var App = null;
-  var container = null;
-  var logEntries = null;
-  var AppConstructor = null;
-  var AppEnv = null;
-  var AppInit = null;
-  var AppDinit = null;
-  var cluster = null;
-  var os = null;
-  var globalProcess = null;
-  var lastSetTimeout = null;
-  var realSetTimeout = setTimeout;
+  let App = null;
+  let container = null;
+  let logEntries = null;
+  let AppConstructor = null;
+  let AppEnv = null;
+  let AppInit = null;
+  let AppDinit = null;
+  let cluster = null;
+  let os = null;
+  let globalProcess = null;
+  let lastSetTimeout = null;
+  let realSetTimeout = setTimeout;
 
-  GLOBAL.setTimeout = function ( func, timeout ) {
+  global.setTimeout = function ( func, timeout ) {
     lastSetTimeout = timeout;
     realSetTimeout( func, 10 );
   };
 
-  var killCount = 0;
+  let killCount = 0;
 
-  var Process = function ( id ) {
+  let Process = function ( id ) {
     EventEmitter.call( this );
     this.pid = id;
   };
@@ -63,11 +62,11 @@ describe( 'Daemonix', function () {
       setImmediate( done, null );
     };
 
-    var scribe = function ( level, message, meta ) {
+    let scribe = function ( level, message, meta ) {
       logEntries.push( arguments );
     };
 
-    var Cluster = function () {
+    let Cluster = function () {
       EventEmitter.call( this );
       this.isMaster = true;
       this.workers = {};
@@ -77,22 +76,24 @@ describe( 'Daemonix', function () {
     require( 'util' ).inherits( Cluster, EventEmitter );
 
     Cluster.prototype.fork = function () {
-      var self = this;
+      let self = this;
       self.forkCount++;
 
       (function ( pid ) {
 
-        self.workers[pid] = {
+        self.workers[ pid ] = {
           process: new Process( pid )
         };
-        self.workers[pid].process.on( 'exit', function () {
+        self.workers[ pid ].process.on( 'exit', function () {
 
           self.exitCount++;
-          var worker = self.workers[pid];
-          delete self.workers[pid];
+          let worker = self.workers[ pid ];
+          delete self.workers[ pid ];
           self.emit( 'exit', worker );
 
         } );
+
+        self.emit( 'fork', self.workers[ pid ] );
 
       })( nextPid );
 
@@ -101,9 +102,9 @@ describe( 'Daemonix', function () {
 
     Cluster.prototype.workerCount = function () {
 
-      var count = 0;
+      let count = 0;
 
-      for ( var i in this.workers ) {
+      for ( let i in this.workers ) {
         if ( this.workers.hasOwnProperty( i ) ) {
           count++;
         }
@@ -114,9 +115,9 @@ describe( 'Daemonix', function () {
     };
 
     Cluster.prototype.killWorker = function () {
-      for ( var i in this.workers ) {
+      for ( let i in this.workers ) {
         if ( this.workers.hasOwnProperty( i ) ) {
-          var worker = this.workers[i];
+          let worker = this.workers[ i ];
           worker.process.kill();
           break;
         }
@@ -126,7 +127,7 @@ describe( 'Daemonix', function () {
     cluster = new Cluster();
 
     os = {
-      cpus:      function () {
+      cpus: function () {
         return {
           length: this.cpuLength
         };
@@ -134,7 +135,7 @@ describe( 'Daemonix', function () {
       cpuLength: 3
     };
 
-    var GlobalProcess = function () {
+    let GlobalProcess = function () {
       EventEmitter.call( this );
       this.pid = 50;
       this.exitCount = 0;
@@ -159,13 +160,13 @@ describe( 'Daemonix', function () {
 
     globalProcess = new GlobalProcess();
 
-    container = new Container();
-
-    container.set( 'config', { app: App } );
-    container.set( 'cluster', cluster );
-    container.set( 'os', os );
-    container.set( 'process', globalProcess );
-    container.set( 'scribe', scribe );
+    container = {
+      app: App,
+      cluster: cluster,
+      os: os,
+      process: globalProcess,
+      log: scribe
+    };
 
   } );
 
@@ -173,7 +174,7 @@ describe( 'Daemonix', function () {
 
     it( 'should work with a default config', function () {
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
       globalProcess.emit( 'SIGINT' );
 
       daemonix = new Daemonix( container );
@@ -185,34 +186,9 @@ describe( 'Daemonix', function () {
 
     } );
 
-    it( 'should work with an overridden container', function () {
-
-//			var daemonixFactory = require( '../index' );
-//
-//			// apply override
-//			daemonixFactory( container );
-//
-//			// generate instance
-//
-//			daemonixFactory( {
-//												 app: App
-//											 } );
-//
-////
-////			globalProcess.emit( 'SIGINT' );
-////
-////			daemonix = new Daemonix( container );
-////			globalProcess.emit( 'SIGTERM' );
-////
-//			assert.strictEqual( cluster.forkCount, 2 );
-//			assert.strictEqual( cluster.exitCount, 0 );
-//			assert.strictEqual( killCount, 4 );
-
-    } );
-
     it( 'should restart the worker with a default config', function ( done ) {
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
 
       cluster.killWorker();
 
@@ -235,15 +211,13 @@ describe( 'Daemonix', function () {
 
     it( 'should restart the worker with a custom config', function ( done ) {
 
-      container.set( 'config', {
-        app:     App,
-        workers: {
-          count:          3,
-          restartTimeout: 3000
-        }
-      } );
+      container.app = App;
+      container.workers = {
+        count: 3,
+        restartTimeout: 3000
+      };
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
 
       cluster.killWorker();
       cluster.killWorker();
@@ -267,23 +241,19 @@ describe( 'Daemonix', function () {
 
     it( 'should start the correct number of workers for specified count', function () {
 
-      container.set( 'config', {
-        app:     App,
-        workers: {
-          count: 1
-        }
-      } );
+      container.app = App;
+      container.workers = {
+        count: 1
+      };
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
 
       assert.strictEqual( cluster.forkCount, 1 );
 
-      container.set( 'config', {
-        app:     App,
-        workers: {
-          count: 10
-        }
-      } );
+      container.app = App;
+      container.workers = {
+        count: 10
+      };
 
       daemonix = new Daemonix( container );
 
@@ -293,14 +263,12 @@ describe( 'Daemonix', function () {
 
     it( 'should start the correct number of workers for auto count', function () {
 
-      container.set( 'config', {
-        app:     App,
-        workers: {
-          count: 'auto'
-        }
-      } );
+      container.app = App;
+      container.workers = {
+        count: 'auto'
+      };
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
 
       assert.strictEqual( cluster.forkCount, os.cpuLength );
 
@@ -318,7 +286,7 @@ describe( 'Daemonix', function () {
 
     it( 'should instantiate, init and dinit App, once each', function ( done ) {
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
       globalProcess.emit( 'SIGTERM' );
       globalProcess.emit( 'SIGTERM' );
       globalProcess.emit( 'SIGINT' );
@@ -344,7 +312,7 @@ describe( 'Daemonix', function () {
 
     it( 'should instantiate, init and that is all', function () {
 
-      var daemonix = new Daemonix( container );
+      let daemonix = new Daemonix( container );
       globalProcess.emit( 'SIGINT' );
 
       assert.strictEqual( AppEnv, 'testing' );

@@ -1,11 +1,16 @@
 daemonix
 ===
 
-Daemonix is a tool for deploying and managing NodeJS systems as a daemon in Linux/Unix environments.
+Daemonix is an awesome tool for managing NodeJS processes/clusters as a daemon in Linux/Unix environments.
 
-Were are targeting Ubuntu 12.04+ for our initial release but other distros will come online eventually. No, we will never try to make this work for Windows in any way shape or form.
+No, we will never try to make this work for Windows in any way shape or form.
 
 Pronunciation: day-mon-icks
+
+## Version 3.0.0
+This is a big re-write to the interface of the Deamonix process management component, and a complete 
+removal of the Deamonix CLI tool for deploying processes. See the CLI section below for reasoning behind removing the
+CLI tool.
 
 Basic Usage
 ===
@@ -14,29 +19,42 @@ The minimum to have daemonix manage your process is just this in your server.js.
 
 ```javascript
 
-// You must specify an App class, that provides this interface
-var App = function( env ) {
-	// env is a string containing the environment you are in. It is up to your app to figure out how to pull down configs
-};
-App.prototype.init = function(done) {
-	// done should be called after the app is finished being initialized, opening
-	// web application ports, creating other resources, etc.
-	// if you pull in your configs dynamically, this would be the place to do it and then start loading dependencies
-	setImmediate(done, null);
-};
-App.prototype.dinit = function(done) {
-  // done should be called when app is finished being de-initialized, closing
-  // web servers, etc.
-	setImmediate(done, null);
-};
-
-var daemonix = require( 'daemonix' )( { app: App } );
-
+class App{
+  
+  constructor(env) {
+    // env is a string containing the env name, set by NODE_ENV
+  }
+  
+  init(done) {
+    // This is how we do graceful startup.
+    // init() will get called when the process starts. init() must call done() once the App is 100% up and running.
+  }
+  
+  dinit(done) {
+    // This is how we do graceful shutdown.
+    // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for 
+    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() 
+    // must call done() once the App is 100% ready for the process to die. If the app doesn't call done() in a
+    // reasonable amount of time, the process will be forceably closed.
+  }
+  
+}
+ 
+const daemonix = require( 'daemonix' );
+ 
+// tell the daemon its time to work
+daemonix( { app: App } );
 ```
 
-With this code, Daemonix will automatically spin up two worker processes, and manage the worker's presence. If the workers die for any reason, Daemonix will restart it. This minimizes the need for utilities like forever.
+With this code, Daemonix will automatically spin up two worker processes, and manage the worker's presence. If the 
+workers die for any reason, Daemonix will restart it. This minimizes, and even removes, the need for utilities like 
+forever.
 
-If any worker dies, it will be restarted in 1000 ms. If the master process exits, then it will give each worker up to 30000 ms to call ```done()``` on ```dinit()```.
+If any worker dies, it will be restarted in 1000 ms. If the master process exits, then it will give each worker up to 
+30000 ms to call ```done()``` on ```dinit()```.
+
+See [@StringStack/core](https://www.npmjs.com/package/@stringstack/core) for an awesome framework that generates an App 
+class with built-in dependency management. 
 
 Advanced Usage
 ===
@@ -45,66 +63,111 @@ If you want to customize control, you can override any of the parameters like th
 
 ```javascript
 
-var daemonix = require( 'daemonix' )( {
-  app: App
-  workers: {
-    count: [ int | 'auto'], // int > 0, specifies exact number of workers to use, auto will use one worker per CPU core. default: 2
-    restartTimeout: [ int ], // number of milliseconds to wait before restarting a failed worker. default: 1000
-    shutdownTimeout: [ int ] // number of milliseconds to wait on app.dinit(done); to call done(null) before the worker is killed. default: 30000
-} );
+class App{
+  
+  constructor(env) {
+    // env is a string containing the env name, set by NODE_ENV
+  }
+  
+  init(done) {
+    // This is how we do graceful startup.
+    // init() will get called when the process starts. init() must call done() once the App is 100% up and running.
+  }
+  
+  dinit(done) {
+    // This is how we do graceful shutdown.
+    // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for 
+    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() 
+    // must call done() once the App is 100% ready for the process to die. If the app doesn't call done() in a
+    // reasonable amount of time, the process will be forceably closed.
+  }
+  
+}
+ 
+const daemonix = require( 'daemonix' );
+ 
+// tell the daemon its time to work
+daemonix( { 
+  app: App,
+  log: function( level, message, meta ) {
+    
+    // if a meta object is passed, stringify it and attach to message
+    if ( arguments.length === 3 ) {
+      message += ': ' + JSON.stringify( meta );
+    }
 
+    console.error( new Date().toISOString() + ' - ' + level + ': [' + process.pid + '] ' + message );
+    
+  },
+  workers: {
+      count: int | 'auto', // int > 0, specifies exact number of workers to use, auto will use one worker per CPU core. default: 2
+      restartTimeout: int, // number of milliseconds to wait before restarting a failed worker. default: 1000
+      shutdownTimeout: int, // number of milliseconds to wait on app.dinit(done); to call done(null) before the worker is killed. default: 30000
+      exitOnException: boolean // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing default: TRUE 
+  }
+} );
+ 
 ```
 
-Extra Advanced Usage
-===
+## app field
 
-Daemonix is also a deploy tool. Currently it works on Ubuntu (and maybe any other Upstart based distro). But, we are working on other Linux distros now. No, don't old your breath for Windows. That will never happen.
+This is is an App class. See the example for structure
+
+## log field
+
+This is a function that will get logging information. Since we are logging outside of your app, and probably outside 
+your fancy logging system, we recommend just hitting stderr or some log file. Either, way, its up to you. 
+
+## workers field
+
+### workers.count: default 2
+
+The number of worker processes.
  
-To deploy with Daemonix you need the following:
+Why do we default to two workers? If your process dies due to an uncaught exception, you don't want to take down your
+entire server. Having a minimum of two workers prevents this from happening. If you need to scale differently, because
+you smartly run a Kubernetes cluster of containers with 1 cpu each, then set this to Auto or 1. 
 
-- Ubuntu servers to deploy to. Each server should have a user with an SSH key for password-less login, and be able to sudo without a password. 
-- The deployment server must have Node installed, a git client (and SSH keys for any git repos requiring auth you want to reference) and all other global build tools your apps may use (grunt-cli, nib, etc.)
-- Then, install Daemonix: npm -g install daemonix
-- Run daemonix --help to see what it can do.
+### workers.restartTimeout: default 1000
 
-Yes, we need more details on these things, but at a high level Daemonix will:
+If a worker process exits unexpectedly, this is how long in ms we will wait before starting it back up again.
 
-- Let you add an app with a corresponding git repo
-- Let you define environments for the app (production, staging, production-api, production-workers, qa1, qa2, etc). Each environment allows you to specify hosts to deploy to, alternative name for the daemon the app will run under (default is app name), and some others.
-- Let you add/remove nodes (Linux servers you deploy to) from an environment. 
-- Let you do more.
+### workers.shutdownTimeout: default 30000
 
-Notes:
+If the daemon is shutting down, this is how long we will wait for the worker to exit. The worker exit time is almost 
+entirely dependent on your app.dinit() method calling done(); The daemonix overhead for shutdown handling is << 1ms. 
 
-The CLI tool will create a directory ~/.daemonix. In there it caches built packages and stores all the app configs in easy to ready JSON files. Feel free to poke around, I think you could figure it out.
+If it is normal for your application to take 30000ms or longer to shutdown, set this number higher. We recommend it to
+be set between 2x and 3x times expected shutdown time.
 
-When doing a deploy, run it with the debug flag, it will output every command daemonix is issuing to build, package and deploy your application.
+### workers.restartOnException: default TRUE
 
-Has been tested with NodeJS versions 0.10 and 0.12, and Ubuntu 14.04 LTS (Derivatives probably work too, Mint, Lubuntu, Kubuntu, etc).
+This should only be set to FALSE for testing and debugging. NEVER release production code with this set to FALSE. Only
+set this to FALSE if you have an uncaught exception firing and you are trying to debug application state without the
+process exiting.
+
+# CLI
+
+The deamonix deployment system and CLI tool has been removed. We highly recommend using containers, or services like 
+Google's AppEngine to deploy your code. Running physical servers, or even VMs is the way of the past. By removing
+support for deployments we can focus on more important things.
+
+The process management will remain the focus of this library. We will continue to support signal handling in every major
+nix like system.
+
+Thanks!
 
 Contribute
 ===
 
-If you want to contribute, feel free to. Fork the repo on GitHub, make a feature branch of the format 'feature/feature-name-here', and get to work! 
-
-Some things we need:
-
-- Automated testing, with Mocha please. Automating this is nasty as you need a target node to deploy to.
-- Support for RedHat, CentOS and Fedora
-- Support for Suse
-- Support for Solaris
-- Support for BSD
-- Support for any other Unix target you can think of
-- Some refactoring. Things are a little cramped
-- A service for allowing build servers to issues commands and get status on deployments, etc
+If you want to contribute, feel free to. Fork the repo on GitHub, make a feature branch of the format 'feature/feature-name-here', and get to work!
 
 Some things we don't need:
 
-- Indentation with spaces. If you find it, and commit a fix with only white space enhancements, bravo!
 - Comma first array definitions 
 - Omitting braces on code blocks
 - CoffeeScript
 - Variable version numbers in package.json. Lock them down.
 - Back talk. Present your case with logic and you will be heard. Present it with attitude and we will hug you until you cry and hug us back.
 
-When in doubt, format your code like you are writing good ole C. 
+When in doubt, format your code like you are writing good ole C and don't be a hipster coder.
