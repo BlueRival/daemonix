@@ -8,11 +8,12 @@
     "url": "git@github.com:BlueRival/daemonix.git"
   },
   "dependencies": {
-    "async": "2.6.1",
+    "async": "3.0.1",
     "doublescore": "0.3.7"
   },
   "devDependencies": {
-    "mocha": "5.2.0"
+    "@types/mocha": "5.2.7",
+    "mocha": "6.1.4"
   },
   "keywords": [
     "daemon",

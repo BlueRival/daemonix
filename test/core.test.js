@@ -79,7 +79,7 @@ describe( 'Daemonix', function () {
       let self = this;
       self.forkCount++;
 
-      (function ( pid ) {
+      ( function ( pid ) {
 
         self.workers[ pid ] = {
           process: new Process( pid )
@@ -95,7 +95,7 @@ describe( 'Daemonix', function () {
 
         self.emit( 'fork', self.workers[ pid ] );
 
-      })( nextPid );
+      } )( nextPid );
 
       nextPid++;
     };
@@ -313,6 +313,8 @@ describe( 'Daemonix', function () {
     it( 'should instantiate, init and that is all', function () {
 
       let daemonix = new Daemonix( container );
+
+      // SIGINT sometimes trickles down from a parent in addition to SIGTERM. It needs to be ignored.
       globalProcess.emit( 'SIGINT' );
 
       assert.strictEqual( AppEnv, 'testing' );
