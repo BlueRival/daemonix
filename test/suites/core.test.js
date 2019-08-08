@@ -1,7 +1,7 @@
-"use strict";
+'use strict';
 
 let assert = require( 'assert' );
-let Daemonix = require( '../lib/daemonix' );
+let Daemonix = require( '../../lib/daemonix' );
 let EventEmitter = require( 'events' ).EventEmitter;
 let nextPid = 100;
 
@@ -33,7 +33,7 @@ describe( 'Daemonix', function () {
   };
   require( 'util' ).inherits( Process, EventEmitter );
 
-  Process.prototype.kill = function ( signal ) {
+  Process.prototype.kill = function () {
     killCount++;
     this.emit( 'exit' );
   };
@@ -62,7 +62,7 @@ describe( 'Daemonix', function () {
       setImmediate( done, null );
     };
 
-    let scribe = function ( level, message, meta ) {
+    let scribe = function () {
       logEntries.push( arguments );
     };
 
@@ -79,7 +79,7 @@ describe( 'Daemonix', function () {
       let self = this;
       self.forkCount++;
 
-      (function ( pid ) {
+      ( function ( pid ) {
 
         self.workers[ pid ] = {
           process: new Process( pid )
@@ -95,7 +95,7 @@ describe( 'Daemonix', function () {
 
         self.emit( 'fork', self.workers[ pid ] );
 
-      })( nextPid );
+      } )( nextPid );
 
       nextPid++;
     };
@@ -174,10 +174,14 @@ describe( 'Daemonix', function () {
 
     it( 'should work with a default config', function () {
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
+
       globalProcess.emit( 'SIGINT' );
 
-      daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
+
       globalProcess.emit( 'SIGTERM' );
 
       assert.strictEqual( cluster.forkCount, 4 );
@@ -188,7 +192,8 @@ describe( 'Daemonix', function () {
 
     it( 'should restart the worker with a default config', function ( done ) {
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
 
       cluster.killWorker();
 
@@ -217,7 +222,8 @@ describe( 'Daemonix', function () {
         restartTimeout: 3000
       };
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
 
       cluster.killWorker();
       cluster.killWorker();
@@ -246,7 +252,8 @@ describe( 'Daemonix', function () {
         count: 1
       };
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
 
       assert.strictEqual( cluster.forkCount, 1 );
 
@@ -255,7 +262,8 @@ describe( 'Daemonix', function () {
         count: 10
       };
 
-      daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
 
       assert.strictEqual( cluster.forkCount, 11 );
 
@@ -268,7 +276,8 @@ describe( 'Daemonix', function () {
         count: 'auto'
       };
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
 
       assert.strictEqual( cluster.forkCount, os.cpuLength );
 
@@ -286,7 +295,9 @@ describe( 'Daemonix', function () {
 
     it( 'should instantiate, init and dinit App, once each', function ( done ) {
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
+
       globalProcess.emit( 'SIGTERM' );
       globalProcess.emit( 'SIGTERM' );
       globalProcess.emit( 'SIGINT' );
@@ -312,7 +323,9 @@ describe( 'Daemonix', function () {
 
     it( 'should instantiate, init and that is all', function () {
 
-      let daemonix = new Daemonix( container );
+      // eslint-disable-next-line no-new
+      new Daemonix( container );
+
       globalProcess.emit( 'SIGINT' );
 
       assert.strictEqual( AppEnv, 'testing' );

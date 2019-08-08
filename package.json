@@ -1,18 +1,21 @@
 {
   "name": "daemonix",
   "description": "Daemonix is an awesome tool for managing NodeJS processes/clusters as a daemon in Linux/Unix environments.",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "author": "Anthony Hildoer <anthony@bluerival.com>",
   "repository": {
     "type": "git",
     "url": "git@github.com:BlueRival/daemonix.git"
   },
   "dependencies": {
-    "async": "2.6.1",
-    "doublescore": "0.3.7"
+    "async": "2.6.2",
+    "doublescore": "1.0.0"
   },
   "devDependencies": {
-    "mocha": "5.2.0"
+    "@types/mocha": "5.2.7",
+    "eslint": "6.1.0",
+    "glob": "7.1.4",
+    "mocha": "6.2.0"
   },
   "keywords": [
     "daemon",
@@ -22,7 +25,8 @@
     "node": ">=6.0.0"
   },
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha"
+    "test-watch": "./node_modules/mocha/bin/mocha -b -u bdd -w --exit test/*.test.js",
+    "test": "./node_modules/mocha/bin/mocha -b -u bdd --exit test/*.test.js"
   },
   "license": "MIT"
 }
