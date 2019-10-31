@@ -50,11 +50,14 @@
       }
     ],
     "linebreak-style": [
-      "off"
+      "error",
+      "unix"
     ],
     "new-cap": [
       "error",
-      { "newIsCap": true }
+      {
+        "newIsCap": true
+      }
     ],
     "no-eq-null": "error",
     "no-extend-native": "error",
@@ -66,11 +69,13 @@
     "no-return-assign": "error",
     "no-throw-literal": "error",
     "no-undefined": "error",
-    "no-prototype-builtins": "off",
     "no-unused-expressions": "error",
     "no-useless-return": "error",
     "no-var": "error",
-    "one-var": [ "error", "never" ],
+    "one-var": [
+      "error",
+      "never"
+    ],
     "quotes": [
       "error",
       "single"
@@ -79,7 +84,10 @@
       "error",
       "always"
     ],
-    "space-in-parens": [ "error", "always" ],
+    "space-in-parens": [
+      "error",
+      "always"
+    ],
     "strict": [
       "error",
       "global"
