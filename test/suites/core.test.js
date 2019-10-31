@@ -81,19 +81,19 @@ describe( 'Daemonix', function () {
 
       ( function ( pid ) {
 
-        self.workers[ pid ] = {
+        self.workers[pid] = {
           process: new Process( pid )
         };
-        self.workers[ pid ].process.on( 'exit', function () {
+        self.workers[pid].process.on( 'exit', function () {
 
           self.exitCount++;
-          let worker = self.workers[ pid ];
-          delete self.workers[ pid ];
+          let worker = self.workers[pid];
+          delete self.workers[pid];
           self.emit( 'exit', worker );
 
         } );
 
-        self.emit( 'fork', self.workers[ pid ] );
+        self.emit( 'fork', self.workers[pid] );
 
       } )( nextPid );
 
@@ -105,7 +105,7 @@ describe( 'Daemonix', function () {
       let count = 0;
 
       for ( let i in this.workers ) {
-        if ( this.workers.hasOwnProperty( i ) ) {
+        if ( Object.prototype.hasOwnProperty.call( this.workers, i ) ) {
           count++;
         }
       }
@@ -116,8 +116,8 @@ describe( 'Daemonix', function () {
 
     Cluster.prototype.killWorker = function () {
       for ( let i in this.workers ) {
-        if ( this.workers.hasOwnProperty( i ) ) {
-          let worker = this.workers[ i ];
+        if ( Object.prototype.hasOwnProperty.call( this.workers, i ) ) {
+          let worker = this.workers[i];
           worker.process.kill();
           break;
         }
