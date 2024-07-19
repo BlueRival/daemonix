@@ -1,4 +1,6 @@
 declare module 'daemonix' {
+    // Defining interfaces
+
     interface App {
         new(env: string): App;
 
@@ -18,9 +20,12 @@ declare module 'daemonix' {
         exitOnException: boolean;
     }
 
-    export function daemonix(options: {
+    interface DaemonixOptions {
         app: App;
         log: LogFn;
         workers: WorkersOptions;
-    }): void;
+    }
+
+    const daemonix: (options: DaemonixOptions) => void;
+    export default daemonix;
 }
