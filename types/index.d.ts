@@ -1,29 +1,30 @@
 declare module 'daemonix' {
     // Defining interfaces
 
-    interface App {
-        new(env: string): App;
-
+    export interface App {
         init(done: (err?: Error | null) => void): void;
 
         dinit(done: (err?: Error | null) => void): void;
     }
 
-    interface LogFn {
+    // Here typeof AppInterface is used to represent a Class that implements the AppInterface
+    export type AppClass = new (env: string) => App;
+
+    export interface LogFn {
         (level: string, message: string, meta?: Record<string, unknown>): void;
     }
 
-    interface WorkersOptions {
-        count: number | 'auto';
-        restartTimeout: number;
-        shutdownTimeout: number;
-        exitOnException: boolean;
+    export interface WorkersOptions {
+        count?: number | 'auto';
+        restartTimeout?: number;
+        shutdownTimeout?: number;
+        exitOnException?: boolean;
     }
 
-    interface DaemonixOptions {
-        app: App;
-        log: LogFn;
-        workers: WorkersOptions;
+    export interface DaemonixOptions {
+        app: AppClass;  // Now App represents a Class type
+        log?: LogFn;
+        workers?: WorkersOptions;
     }
 
     const daemonix: (options: DaemonixOptions) => void;
