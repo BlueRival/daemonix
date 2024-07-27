@@ -11,7 +11,7 @@ declare module 'daemonix' {
     type AppClass = new (env: string) => App;
 
     interface LogFn {
-        (level: string, message: string, meta?: Record<string, unknown>): void;
+        (level: 'error' | 'info' | 'warning', message: string, meta?: Record<string, unknown>): void;
     }
 
     interface WorkersOptions {

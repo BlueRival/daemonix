@@ -1,7 +1,7 @@
 {
   "name": "daemonix",
   "description": "Daemonix is an awesome tool for managing NodeJS processes/clusters as a daemon in Linux/Unix environments.",
-  "version": "3.0.9",
+  "version": "3.0.10",
   "author": "Anthony Hildoer <anthony@bluerival.com>",
   "repository": {
     "type": "git",
