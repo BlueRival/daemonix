@@ -6,17 +6,21 @@
   },
   "extends": "eslint:recommended",
   "parserOptions": {
-    "ecmaVersion": 2015,
+    "ecmaVersion": 2017,
     "sourceType": "script"
   },
   "globals": {
     "localRequire": true
   },
   "rules": {
+    "arrow-parens": [
+      "error",
+      "as-needed"
+    ],
     "camelcase": "error",
     "comma-dangle": [
       "error",
-      "never"
+      "always-multiline"
     ],
     "comma-style": [
       "error",
@@ -81,10 +85,6 @@
       "single"
     ],
     "semi": [
-      "error",
-      "always"
-    ],
-    "space-in-parens": [
       "error",
       "always"
     ],
