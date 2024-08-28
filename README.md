@@ -10,9 +10,8 @@ will:
  * Work with any process management, whether OS based or home brewed: SystemV, Upstart, PM2, etc.
  * Have no opinion about your code aside from the instantiate, init, dinit life cycle.  
 
-~~No, we will never try to make this work for Windows in any way shape or form.~~ Actually, Daemonix may actually work
-on Windows as is. Even through it is targeted at Nix based OSes it appears to work on Windows based on some 3rd party 
-feedback we have received. Yay? 
+No, we will never try to make this work for Windows in any way shape or form. It may or may not work for Windows as is, 
+and we don't care. ;-)
 
 If you want to understand how Daemonix works, see [Deep Dive on Daemonix](#deep-dive-on-daemonix).
 
@@ -38,43 +37,41 @@ The minimum to have Daemonix manage your process is just this in your server.js.
 
 ```javascript
 
-class App{
-  
-  constructor(env) {
-    // env is a string containing the env name, set by NODE_ENV
+// This class is passed to Daemonix, but it is only instatiated in the worker processes.
+// This class is never instantiated, and thus none of the methods are called, in the main process of the cluster.
+class BootstrapApp {
+
+  // The constructor is optional. If your code needs to do some setup before init() is called, put that here.
+  constructor() {
   }
-  
-  init(done) {
-    // This is how we do graceful startup.
-    // init() will get called when the process starts. init() must call done() once the App is 100% up and running.
+
+  async init() {
+    // This is how we do graceful startup. This is only called in the worker processes.
+    // init() will get called when the worker process starts. If init() hangs on start-up, Daemonix may terminate and restart the worker.
   }
-  
-  dinit(done) {
-    // This is how we do graceful shutdown.
+
+  async dinit() {
+    // This is how we do graceful shutdown. This is only called in the worker process.
     // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for 
-    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() 
-    // must call done() once the App is 100% ready for the process to die. If the app doesn't call done() in a
-    // reasonable amount of time, the process will be forceably closed.
+    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() must not return 
+    // until the App is 100% ready for the process to exit. If dinit() doesn't return in a reasonable amount of time, 
+    // the process will be forceably closed.
   }
-  
+
 }
- 
-const daemonix = require( 'daemonix' );
- 
+
+import daemonix from 'daemonix';
+
 // tell the daemon its time to work
-daemonix( { app: App } );
+daemonix({ app: BootstrapApp });
 ```
 
-With this code, Daemonix will automatically spin up two worker processes, and manage the worker's presence. If the 
-workers die for any reason, Daemonix will restart it. This minimizes, and even removes, the need for utilities like 
-forever.
+With this code, Daemonix will automatically spin up a minimum of two worker processes, and manage the worker's presence. 
+If the workers die for any reason, Daemonix will restart it. This minimizes, and even removes, the need for utilities like 
+`forever`. If the system has more than 2 CPU cores, Daemonix will create one worker process for each CPU core.
 
-If any worker dies, it will be restarted in 1000 ms. If the master process exits, then it will give each worker up to 
-30000 ms to call ```done()``` on ```dinit()```.
-
-See [StringStack](https://www.npmjs.com/package/stringstack) for an awesome framework that generates an App class with 
-built-in dependency management. 
-
+If any worker dies, it will be restarted in 1000 ms. If the main process exits, then it will give each worker up to 
+30000 ms to return from ```dinit()```.
 
 ## Advanced Usage
 
@@ -82,23 +79,15 @@ If you want to customize control, you can override any of the parameters like th
 
 ```javascript
 
-class App{
+class BootstrapApp {
   
-  constructor(env) {
-    // env is a string containing the env name, set by NODE_ENV
+  
+  async init() {
+   // startup your code
   }
   
-  init(done) {
-    // This is how we do graceful startup.
-    // init() will get called when the process starts. init() must call done() once the App is 100% up and running.
-  }
-  
-  dinit(done) {
-    // This is how we do graceful shutdown.
-    // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for 
-    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() 
-    // must call done() once the App is 100% ready for the process to die. If the app doesn't call done() in a
-    // reasonable amount of time, the process will be forceably closed.
+  async dinit() {
+    // shutdown your code
   }
   
 }
@@ -107,21 +96,19 @@ const daemonix = require( 'daemonix' );
  
 // tell the daemon its time to work
 daemonix( { 
-  app: App,
-  log: function( level, message, meta ) {
+  app: BootstrapApp,
+  log: function( level, message, meta = null ) {
     
-    // if a meta object is passed, stringify it and attach to message
-    if ( arguments.length === 3 ) {
-      message += ': ' + JSON.stringify( meta );
-    }
-
-    console.error( new Date().toISOString() + ' - ' + level + ': [' + process.pid + '] ' + message );
+    // pass the message to your logging service.
+    // level can be 'error' | 'info' | 'warning'
+    // message will always be a string
+    // meta can be an Error or some other simple JSON object
     
   },
   workers: {
-      count: int | 'auto', // int > 0, specifies exact number of workers to use, auto will use one worker per CPU core. default: 2
+      count: int | 'auto', // int > 0, specifies exact number of workers to use. Auto will use one worker per CPU core with a minimum of 2 workers. default: 1 worker
       restartTimeout: int, // number of milliseconds to wait before restarting a failed worker. default: 1000
-      shutdownTimeout: int, // number of milliseconds to wait on app.dinit(done); to call done(null) before the worker is killed. default: 30000
+      shutdownTimeout: int, // number of milliseconds to wait on app.dinit(); to return before the worker is killed. default: 30000
       exitOnException: boolean // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing default: TRUE 
   }
 } );
@@ -130,22 +117,22 @@ daemonix( {
 
 ### app field
 
-This is is an App class. See the example for structure
+This is an App class as described above in the examples. See the example for structure.
 
 ### log field
 
-This is a function that will get logging information. Since we are logging outside of your app, and probably outside 
-your fancy logging system, we recommend just hitting stderr or some log file. Either, way, its up to you. 
+This is a function that will get logging information. Since we are logging outside your app, and probably outside 
+your fancy logging system, we recommend just hitting stderr or some log file. Either, way, it's up to you. 
 
 ### workers field
 
-#### workers.count: default 2
+#### workers.count: default 1
 
 The number of worker processes.
  
-Why do we default to two workers? If your process dies due to an uncaught exception, you don't want to take down your
-entire server. Having a minimum of two workers prevents this from happening. If you need to scale differently, because
-you smartly run a Kubernetes cluster of containers with 1 cpu each, then set this to Auto or 1. 
+Why do we default to two workers on auto even if the system only has 1 CPU? If your process dies due to an uncaught 
+exception, you don't want to take down your entire server. Having a minimum of two workers prevents this from happening. 
+If you need to scale differently, you can set this dynamically in your bootstrap file. 
 
 #### workers.restartTimeout: default 1000
 
@@ -154,7 +141,7 @@ If a worker process exits unexpectedly, this is how long in ms we will wait befo
 #### workers.shutdownTimeout: default 30000
 
 If the daemon is shutting down, this is how long we will wait for the worker to exit. The worker exit time is almost 
-entirely dependent on your app.dinit() method calling done(); The daemonix overhead for shutdown handling is << 1ms. 
+entirely dependent on your app.dinit() method returning; The daemonix overhead for shutdown handling is << 1ms. 
 
 If it is normal for your application to take 30000ms or longer to shutdown, set this number higher. We recommend it to
 be set between 2x and 3x times expected shutdown time.
@@ -222,7 +209,7 @@ Daemonix will create all of the worker processes.
     * Worker Mode
         * Daemonix will see that it is started as a worker process.
         * Daemonix will instantiate an instance of App class passed to `daemonix()`.
-        * Daemonix will then call `app.init()`. If init does not call done within the timeout, Daemonix will exit and
+        * Daemonix will then call `app.init()`. If init does not return within the timeout, Daemonix will exit and
         the master process will restart the worker.
         * All code in app runs on its own. The only thing Daemonix is doing is looking for signals from the master 
         process and uncaught exceptions.
@@ -293,17 +280,17 @@ kernel
 
 In order to achieve this Daemonix implements the following logic to process signals in the master and worker processes.
 
-#### Master Process
+#### Main Process
 
 The master process funnels all trappable signal types into a single stream of events. The first signal triggers graceful
 shutdown. It doesn't matter if the signal is a SIGINT or SIGTERM. Master process will issue a SIGTERM to each worker 
-process and wait for them to shutdown. If they don't shutdown within timeout master process sends a SIGKILL, which 
+process and wait for them to shut down. If they don't shut down within timeout master process sends a SIGKILL, which 
 forces the process to halt immediately. 
 
 If the master gets a second signal from the user after the first is being processed, master will force shutdown workers
 and itself. Essentially master will SIGKILL the worker processes and then itself. This is useful for when a process is
 hanging on shutdown, perhaps due to an uncaught exception, resource issue like thrashing or some other problem. In these
-cases an administrator may simply issue the a second Ctrl+C or issue an OS level signal twice to force a shutdown 
+cases an administrator may simply issue a second Ctrl+C or issue an OS level signal twice to force a shutdown 
 without having to restart the server, which may also hang if the process won't exit. 
 
 A SIGKILL from the OS is a slightly different story. SIGKILL immediately, without any guile or reservation just deletes

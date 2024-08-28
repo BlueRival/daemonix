@@ -197,14 +197,11 @@ describe('Daemonix', function () {
 
         globalProcess.emit('SIGINT');
 
-        // eslint-disable-next-line no-new
-        new Daemonix(container);
-
         globalProcess.emit('SIGTERM');
 
-        assert.strictEqual(container.cluster.forkCount, 4);
-        assert.strictEqual(container.cluster.exitCount, 4);
-        assert.strictEqual(killCount, 4);
+        assert.strictEqual(container.cluster.forkCount, 2);
+        assert.strictEqual(container.cluster.exitCount, 2);
+        assert.strictEqual(killCount, 2);
       });
 
       it('should restart the worker with a default config', function (done) {
@@ -257,7 +254,7 @@ describe('Daemonix', function () {
         }, 100);
       });
 
-      it('should start the correct number of workers for specified count', function () {
+      it('should start the correct number of workers for specified count 1', function () {
         const container = config.async ? containerAsync : containerCb;
         container.app = config.async ? AppAsync : AppCB;
         container.workers = {
@@ -268,19 +265,36 @@ describe('Daemonix', function () {
         new Daemonix(container);
 
         assert.strictEqual(cluster.forkCount, 1);
+      });
 
-        container.app = AppCB;
+      it('should start the correct number of workers for specified count 2', function () {
+        const container = config.async ? containerAsync : containerCb;
+        container.app = config.async ? AppAsync : AppCB;
         container.workers = {
-          count: 10,
+          count: 2,
         };
 
         // eslint-disable-next-line no-new
         new Daemonix(container);
 
-        assert.strictEqual(cluster.forkCount, 11);
+        assert.strictEqual(cluster.forkCount, 2);
       });
 
-      it('should start the correct number of workers for auto count', function () {
+      it('should start the correct number of workers for specified count > 2', function () {
+        const container = config.async ? containerAsync : containerCb;
+        container.app = config.async ? AppAsync : AppCB;
+        container.workers = {
+          count: 7,
+        };
+
+        // eslint-disable-next-line no-new
+        new Daemonix(container);
+
+        assert.strictEqual(cluster.forkCount, 7);
+      });
+
+      it('should start the correct number of workers for auto count and cpus < 2', function () {
+        os.cpuLength = 1;
         const container = config.async ? containerAsync : containerCb;
         container.app = config.async ? AppAsync : AppCB;
         container.workers = {
@@ -290,7 +304,34 @@ describe('Daemonix', function () {
         // eslint-disable-next-line no-new
         new Daemonix(container);
 
-        assert.strictEqual(cluster.forkCount, os.cpuLength);
+        assert.strictEqual(cluster.forkCount, 2);
+      });
+
+      it('should start the correct number of workers for auto count and cpus == 2', function () {
+        os.cpuLength = 2;
+        const container = config.async ? containerAsync : containerCb;
+        container.app = config.async ? AppAsync : AppCB;
+        container.workers = {
+          count: 'auto',
+        };
+
+        // eslint-disable-next-line no-new
+        new Daemonix(container);
+
+        assert.strictEqual(cluster.forkCount, 2);
+      });
+      it('should start the correct number of workers for auto count and cpus > 2', function () {
+        os.cpuLength = 9;
+        const container = config.async ? containerAsync : containerCb;
+        container.app = config.async ? AppAsync : AppCB;
+        container.workers = {
+          count: 'auto',
+        };
+
+        // eslint-disable-next-line no-new
+        new Daemonix(container);
+
+        assert.strictEqual(cluster.forkCount, 9);
       });
     });
 
@@ -299,7 +340,7 @@ describe('Daemonix', function () {
         cluster.isMaster = false;
       });
 
-      it('should instantiate, init and dinit App, once each', function (done) {
+      it('should instantiate, init and dinit App, once each for multiple SIGTERM and SIGINT signals', function (done) {
         const container = config.async ? containerAsync : containerCb;
 
         // eslint-disable-next-line no-new
@@ -327,7 +368,7 @@ describe('Daemonix', function () {
         }, 100);
       });
 
-      it('should instantiate, init and that is all', function () {
+      it('should instantiate, init and that is all for only SIGINT signal', function () {
         const container = config.async ? containerAsync : containerCb;
         // eslint-disable-next-line no-new
         new Daemonix(container);
