@@ -25,6 +25,15 @@ CLI tool.
 
 - [Basic Usage](#basic-usage)
 - [Advanced Usage](#advanced-usage)
+- [Comparison](#comparison)
+  - [Feature Matrix](#feature-matrix)
+  - [Why not PM2?](#why-not-pm2)
+  - [Why not forever?](#why-not-forever)
+  - [Why not naught?](#why-not-naught)
+  - [Why not nodemon?](#why-not-nodemon)
+  - [Why not the native `cluster` module?](#why-not-the-native-cluster-module)
+  - [Why not just systemd, Docker, or Kubernetes?](#why-not-just-systemd-docker-or-kubernetes)
+  - [Design Principles](#design-principles)
 - [CLI Removed](#cli-removed)
 - [Deep Dive on Daemonix](#deep-dive-on-daemonix)
   - [Life-Cycle](#life-cycle)
@@ -215,6 +224,163 @@ be set between 2x and 3x times expected shutdown time.
 This should only be set to FALSE for testing and debugging. NEVER release production code with this set to FALSE. Only
 set this to FALSE if you have an uncaught exception firing and you are trying to debug application state without the
 process exiting.
+
+## Comparison
+
+There are a lot of ways to keep a Node.js process alive. Daemonix is intentionally **not** trying to be most of
+them. This section is an honest comparison with the tools people most commonly reach for, and why we believe
+Daemonix is a better fit for modern, cloud-native, [12-factor](https://12factor.net) Node.js services.
+
+The short version: Daemonix is a **library** that does **one thing well** — it turns your `App` class into a
+well-behaved POSIX process tree with clustering, graceful shutdown, and crash recovery. It does not deploy your
+code, monitor your code, watch your files, rotate your logs, manage your env vars, or pretend to be an init
+system. Your container orchestrator, your CI/CD, and your OS already do those things, and they do them better.
+
+### Feature Matrix
+
+Legend: ✅ first-class · ⚠️ partial / awkward · ❌ not supported · ➖ explicitly out of scope (good thing)
+
+| Concern                                                   | **Daemonix** | PM2         | forever | naught | nodemon | native `cluster` | systemd / Docker / k8s |
+| --------------------------------------------------------- | ------------ | ----------- | ------- | ------ | ------- | ---------------- | ---------------------- |
+| Pure library (no global install, no daemon binary)        | ✅           | ❌          | ❌      | ❌     | ❌      | ✅               | ❌                     |
+| Single, narrow responsibility (SRP)                       | ✅           | ❌          | ⚠️      | ⚠️     | ⚠️      | ✅               | ✅                     |
+| Multi-CPU clustering with auto worker count               | ✅           | ✅          | ❌      | ✅     | ❌      | ⚠️ (manual)      | ❌                     |
+| Coherent POSIX signal handling (SIGINT/SIGTERM funneled)  | ✅           | ⚠️          | ❌      | ⚠️     | ❌      | ❌               | ⚠️                     |
+| Graceful shutdown lifecycle (`init` / `dinit`)            | ✅           | ⚠️ (events) | ❌      | ⚠️     | ❌      | ❌               | ❌                     |
+| Bounded shutdown timeout with forced kill                 | ✅           | ✅          | ❌      | ⚠️     | ❌      | ❌               | ✅                     |
+| Restart on uncaught exception (controlled)                | ✅           | ✅          | ✅      | ✅     | ⚠️      | ❌               | ⚠️ (whole container)   |
+| 12-factor logs to stdout/stderr (no log files)            | ✅           | ❌ (own)    | ❌      | ⚠️     | ⚠️      | ✅               | ✅                     |
+| 12-factor config from the environment                     | ✅           | ⚠️ (JSON)   | ⚠️      | ⚠️     | ⚠️      | ✅               | ✅                     |
+| No PID files, no state on disk                            | ✅           | ❌          | ❌      | ❌     | ❌      | ✅               | ✅                     |
+| Container-native (PID 1 friendly, no double supervisor)   | ✅           | ❌          | ❌      | ⚠️     | ❌      | ✅               | ✅                     |
+| Works under any orchestrator (k8s, ECS, Nomad, Cloud Run) | ✅           | ⚠️          | ⚠️      | ⚠️     | ❌      | ✅               | n/a                    |
+| Tiny dependency footprint                                 | ✅ (2 deps)  | ❌ (large)  | ⚠️      | ⚠️     | ⚠️      | ✅               | n/a                    |
+| TypeScript types shipped                                  | ✅           | ⚠️          | ❌      | ❌     | ⚠️      | ✅ (via @types)  | n/a                    |
+| Bundles a deploy / monitoring / log-rotation product      | ➖           | ✅ (PM2+)   | ❌      | ❌     | ❌      | ➖               | ➖                     |
+| File-watching / dev reload                                | ➖           | ✅          | ✅      | ❌     | ✅      | ❌               | ❌                     |
+| Windows support                                           | ➖           | ✅          | ✅      | ❌     | ✅      | ✅               | ⚠️                     |
+
+The rows marked ➖ for Daemonix are **deliberate non-goals**. We treat the absence of those features as a feature.
+
+### Why not PM2?
+
+PM2 is the most common alternative, and it does a lot. That is exactly the problem.
+
+- **It is its own daemon.** PM2 runs a long-lived `God` process and a CLI that talks to it over an IPC socket. In
+  a container or under systemd, that means you are running a process supervisor inside a process supervisor. The
+  outer supervisor (Docker, Kubernetes, systemd) cannot see your real workers, only PM2. Health checks, OOM
+  signals, and lifecycle events get muddled.
+- **It violates the [12-factor](https://12factor.net) "logs as event streams" rule.** PM2 captures your stdout
+  and stderr, writes them to its own files in `~/.pm2/logs`, and then expects you to use `pm2 logs` and
+  `pm2-logrotate` to read them. In a container, you want the kernel-level stdout stream so that
+  `kubectl logs`, Cloud Logging, Datadog, etc. just work.
+- **It bundles deploy, monitoring, ecosystem files, keymetrics, cluster mode, log rotation, startup scripts,
+  and more.** This is the opposite of the [Single Responsibility Principle](https://en.wikipedia.org/wiki/SOLID).
+  When any one of those features misbehaves, your process management is at risk too.
+- **State on disk.** PID files, dump files, module store. None of that survives a container restart and none of
+  it should be needed if your orchestrator is doing its job.
+- **Heavy dependency surface.** Every transitive dependency is a supply-chain risk in a process that is, by
+  definition, the parent of your production code.
+
+Daemonix is a `require()` call. It has no daemon, no socket, no CLI, no state directory, and two runtime
+dependencies. Your orchestrator stays in charge.
+
+### Why not forever?
+
+`forever` solves the 2012 problem: "my Node script crashed and I want it to come back." It does not solve the
+2025 problem.
+
+- No clustering, no graceful shutdown contract, no signal funneling.
+- Maintains a global state directory (`~/.forever`) and PID files.
+- Designed to be run from a CLI on a long-lived VM. It has no real story for containers, where the orchestrator
+  is the thing that should restart you.
+- Effectively unmaintained for the last several years.
+
+If you are using `forever` today, your container runtime or systemd unit can already do "restart on exit"
+natively, and Daemonix layers clustering and graceful shutdown on top of that without adding a second
+supervisor.
+
+### Why not naught?
+
+`naught` was a clever idea — zero-downtime deploys via cluster worker swapping. In practice:
+
+- It is unmaintained.
+- It is a CLI / daemon, not a library, and so it has the same "supervisor inside a supervisor" problem as PM2.
+- Zero-downtime deploys are now the orchestrator's job (rolling updates in Kubernetes, blue/green in ECS,
+  traffic splitting in Cloud Run / App Engine). Solving it inside the Node process is the wrong layer.
+
+Daemonix focuses on the part of the problem that _must_ live inside the Node process — POSIX signal coherence,
+clustering, lifecycle — and leaves deployment strategy to the platform that owns deployment.
+
+### Why not nodemon?
+
+`nodemon` is a development tool. It restarts your process when files change. That is not what Daemonix is for,
+and it is not what you want in production. The two tools are complementary:
+
+- Use `nodemon` (or `tsx watch`, etc.) in development.
+- Use Daemonix in every environment, including development, to get the same lifecycle behavior locally that you
+  get in production. (Dev/prod parity is [factor X](https://12factor.net/dev-prod-parity) of 12-factor.)
+
+### Why not the native `cluster` module?
+
+You absolutely _can_ build all of this yourself on top of `node:cluster`. Daemonix is, at its core, a careful
+wrapper around `cluster` plus signal handling. If you only ever needed clustering, the native module is fine.
+
+But every team that tries this ends up rewriting the same code:
+
+- A loop that respawns dead workers with a backoff.
+- Code to track which signal has already been handled, so a double Ctrl-C force-kills.
+- A timeout that escalates SIGTERM to SIGKILL.
+- A worker-side handler that ignores SIGINT, traps SIGTERM, runs cleanup, and exits.
+- A way to call your app's startup and shutdown hooks deterministically.
+
+That code is hard to get right (see [Signals Processing](#signals-processing) below for why). Daemonix is the
+shared, tested implementation of exactly that code, and nothing else.
+
+### Why not just systemd, Docker, or Kubernetes?
+
+You should absolutely use one of those. Daemonix is designed to live _inside_ a container or systemd unit, not
+to replace it. The orchestrator handles:
+
+- Restarting the process if it exits.
+- Sending SIGTERM on shutdown and SIGKILL after a grace period.
+- Health checks, rolling updates, scaling, log collection, secrets, env vars.
+
+What the orchestrator **cannot** do is:
+
+- Cluster a single Node.js process across multiple CPU cores within one container. (You would otherwise need to
+  run N containers per host to use N cores, multiplying overhead.)
+- Give your application code a deterministic `dinit()` callback that runs _before_ the SIGKILL grace period
+  expires.
+- Compress the noisy, OS-dependent stream of POSIX signals into a single, coherent shutdown event so your code
+  can drain connections cleanly.
+
+Daemonix fills exactly that gap, and only that gap.
+
+### Design Principles
+
+These are the rules Daemonix holds itself to. They are why the feature matrix above looks the way it does.
+
+- **Single Responsibility.** Daemonix manages a Node.js process tree. It does not deploy code, watch files,
+  rotate logs, ship metrics, or expose a dashboard. Each of those is a separate concern with a better tool.
+- **Library, not framework.** You call Daemonix; Daemonix does not call you, except through the small `App`
+  contract (`constructor`, `init`, `dinit`). No magic, no globals, no plugin system, no config file format to
+  learn.
+- **12-factor by default.** Logs go to a callback you control (write to stdout). Config comes from your code
+  and the environment. There are no PID files, no log files, no state directory. Processes are disposable —
+  fast startup, graceful shutdown.
+- **Cloud-native and container-friendly.** Daemonix expects to be PID 1's child (or PID 1 itself) inside a
+  container. It cooperates with the orchestrator's signals instead of fighting them. There is no second
+  supervisor.
+- **Open/Closed.** The `App` interface is the extension point. You bring your code; Daemonix doesn't grow new
+  surface area to "support" your framework.
+- **Dependency Inversion.** Daemonix depends on the `App` contract and on POSIX, not on your stack. It works
+  the same with Express, Fastify, Koa, gRPC, raw TCP, queue consumers, or batch workers.
+- **Small surface, small dependency tree.** Two runtime dependencies. The smaller the supervisor, the smaller
+  the blast radius when something goes wrong.
+- **Portability over features.** Any modern Linux/Unix, any orchestrator, any CI/CD, any logging backend.
+  Daemonix has no opinion about how you ship code or where it runs.
+- **Do one thing well.** If a feature can live outside Daemonix, it does.
 
 ## CLI Removed
 
