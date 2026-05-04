@@ -1,6 +1,4 @@
 declare module 'daemonix' {
-  // Defining interfaces
-
   interface App {
     init(done: (err?: Error | null) => void): void;
 
@@ -11,7 +9,7 @@ declare module 'daemonix' {
     dinit(): Promise<void>;
   }
 
-  // Here typeof AppInterface is used to represent a Class that implements the AppInterface
+  // App represents a class constructor that produces an App instance
   type AppClass = new (env: string) => App;
 
   interface LogFn {
@@ -30,11 +28,16 @@ declare module 'daemonix' {
   }
 
   interface DaemonixOptions {
-    app: AppClass; // Now App represents a Class type
+    app: AppClass;
     log?: LogFn;
     workers?: WorkersOptions;
   }
 
-  const daemonix: (options: DaemonixOptions) => void;
+  function daemonix(options: DaemonixOptions): void;
+
+  namespace daemonix {
+    export { App };
+  }
+
   export = daemonix;
 }

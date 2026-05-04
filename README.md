@@ -35,7 +35,8 @@ CLI tool.
 
 The minimum to have Daemonix manage your process is just this in your server.js.
 
-```javascript
+```typescript
+import daemonix from 'daemonix';
 
 // This class is passed to Daemonix, but it is only instatiated in the worker processes.
 // This class is never instantiated, and thus none of the methods are called, in the main process of the cluster.
@@ -60,8 +61,6 @@ class BootstrapApp {
 
 }
 
-import daemonix from 'daemonix';
-
 // tell the daemon its time to work
 daemonix({ app: BootstrapApp });
 ```
@@ -77,7 +76,8 @@ If any worker dies, it will be restarted in 1000 ms. If the main process exits, 
 
 If you want to customize control, you can override any of the parameters like this.
 
-```javascript
+```typescript
+import daemonix from 'daemonix';
 
 class BootstrapApp {
   
@@ -91,8 +91,6 @@ class BootstrapApp {
   }
   
 }
- 
-const daemonix = require( 'daemonix' );
  
 // tell the daemon its time to work
 daemonix( { 
