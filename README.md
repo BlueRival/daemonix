@@ -32,36 +32,73 @@ CLI tool.
 
 ## Basic Usage
 
+The minimum to have Daemonix manage your process is just this in your `server.ts` (TypeScript) or `server.js` (JavaScript).
 
-The minimum to have Daemonix manage your process is just this in your server.js.
+### TypeScript
+
+Daemonix exports an `App` interface you can `implement` on your class. This makes the linter (and your IDE) aware that
+`init()` and `dinit()` are entry points called by Daemonix, so you don't need to declare your own interface.
 
 ```typescript
-import daemonix from 'daemonix';
+import daemonix, { App } from 'daemonix';
 
-// This class is passed to Daemonix, but it is only instatiated in the worker processes.
+// This class is passed to Daemonix, but it is only instantiated in the worker processes.
 // This class is never instantiated, and thus none of the methods are called, in the main process of the cluster.
-class BootstrapApp {
+class BootstrapApp implements App {
 
   // The constructor is optional. If your code needs to do some setup before init() is called, put that here.
   constructor() {
   }
 
-  async init() {
+  async init(): Promise<void> {
     // This is how we do graceful startup. This is only called in the worker processes.
     // init() will get called when the worker process starts. If init() hangs on start-up, Daemonix may terminate and restart the worker.
   }
 
-  async dinit() {
+  async dinit(): Promise<void> {
     // This is how we do graceful shutdown. This is only called in the worker process.
-    // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for 
-    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() must not return 
-    // until the App is 100% ready for the process to exit. If dinit() doesn't return in a reasonable amount of time, 
+    // dinit() will get called when the daemon receives a shutdown signal from the OS. It will trigger once for
+    // Ctrl+c, kill CLI calls, service stop commands from upstart or sysv control systems, etc. dinit() must not return
+    // until the App is 100% ready for the process to exit. If dinit() doesn't return in a reasonable amount of time,
     // the process will be forceably closed.
   }
 
 }
 
 // tell the daemon its time to work
+daemonix({ app: BootstrapApp });
+```
+
+The `App` interface accepts either pattern below for `init` and `dinit`. Pick exactly one — TypeScript will not let
+you mix them:
+
+* **Promise form:** no parameters, returns `Promise<void>` (may reject with an `Error`). This is what the example above
+  uses via `async`.
+* **Callback form:** accepts a single Node-style callback `done(err?: Error | null) => void` and returns `void`. Call
+  `done()` (or `done(err)` on failure) when finished.
+
+### JavaScript
+
+The same code in plain JavaScript — no types, same shape:
+
+```javascript
+const daemonix = require('daemonix');
+
+class BootstrapApp {
+
+  constructor() {
+  }
+
+  async init() {
+    // graceful startup
+  }
+
+  async dinit() {
+    // graceful shutdown
+  }
+
+}
+
 daemonix({ app: BootstrapApp });
 ```
 
@@ -76,41 +113,78 @@ If any worker dies, it will be restarted in 1000 ms. If the main process exits, 
 
 If you want to customize control, you can override any of the parameters like this.
 
-```typescript
-import daemonix from 'daemonix';
+### TypeScript
 
-class BootstrapApp {
-  
-  
-  async init() {
-   // startup your code
+```typescript
+import daemonix, { App } from 'daemonix';
+
+class BootstrapApp implements App {
+
+  async init(): Promise<void> {
+    // startup your code
   }
-  
-  async dinit() {
+
+  async dinit(): Promise<void> {
     // shutdown your code
   }
-  
+
 }
- 
+
 // tell the daemon its time to work
-daemonix( { 
+daemonix({
   app: BootstrapApp,
-  log: function( level, message, meta = null ) {
-    
+  log: (level, message, meta) => {
+
     // pass the message to your logging service.
     // level can be 'error' | 'info' | 'warning'
     // message will always be a string
     // meta can be an Error or some other simple JSON object
-    
+
   },
   workers: {
-      count: int | 'auto', // int > 0, specifies exact number of workers to use. Auto will use one worker per CPU core with a minimum of 2 workers. default: 1 worker
-      restartTimeout: int, // number of milliseconds to wait before restarting a failed worker. default: 1000
-      shutdownTimeout: int, // number of milliseconds to wait on app.dinit(); to return before the worker is killed. default: 30000
-      exitOnException: boolean // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing default: TRUE 
+    count: 'auto',         // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
+    restartTimeout: 1000,  // number of milliseconds to wait before restarting a failed worker. default: 1000
+    shutdownTimeout: 30000,// number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
+    exitOnException: true, // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
+  },
+});
+```
+
+### JavaScript
+
+```javascript
+const daemonix = require('daemonix');
+
+class BootstrapApp {
+
+  async init() {
+    // startup your code
   }
-} );
- 
+
+  async dinit() {
+    // shutdown your code
+  }
+
+}
+
+// tell the daemon its time to work
+daemonix({
+  app: BootstrapApp,
+  log: function (level, message, meta) {
+
+    // pass the message to your logging service.
+    // level can be 'error' | 'info' | 'warning'
+    // message will always be a string
+    // meta can be an Error or some other simple JSON object
+
+  },
+  workers: {
+    count: 'auto',          // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
+    restartTimeout: 1000,   // number of milliseconds to wait before restarting a failed worker. default: 1000
+    shutdownTimeout: 30000, // number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
+    exitOnException: true,  // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
+  },
+});
 ```
 
 ### app field
