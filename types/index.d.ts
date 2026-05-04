@@ -1,5 +1,5 @@
 declare module 'daemonix' {
-  interface App {
+  export interface App {
     /**
      * Initialize the application using a Node-style callback.
      * Call `done(err)` when finished. Returns void.
@@ -25,10 +25,10 @@ declare module 'daemonix' {
     dinit(): Promise<void>;
   }
 
-  // App represents a class constructor that produces an App instance
-  type AppClass = new (env: string) => App;
+  // AppClass represents a class constructor that produces an App instance
+  export type AppClass = new (env: string) => App;
 
-  interface LogFn {
+  export interface LogFn {
     (
       level: 'error' | 'info' | 'warning',
       message: string,
@@ -36,24 +36,20 @@ declare module 'daemonix' {
     ): void;
   }
 
-  interface WorkersOptions {
+  export interface WorkersOptions {
     count?: number | 'auto';
     restartTimeout?: number;
     shutdownTimeout?: number;
     exitOnException?: boolean;
   }
 
-  interface DaemonixOptions {
+  export interface DaemonixOptions {
     app: AppClass;
     log?: LogFn;
     workers?: WorkersOptions;
   }
 
-  function daemonix(options: DaemonixOptions): void;
+  export function daemonix(options: DaemonixOptions): void;
 
-  namespace daemonix {
-    export { App };
-  }
-
-  export = daemonix;
+  export default daemonix;
 }

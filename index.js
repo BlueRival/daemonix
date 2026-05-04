@@ -1,7 +1,11 @@
 'use strict';
 
-let Deamonix = require('./lib/daemonix');
+let Daemonix = require('./lib/daemonix');
 
-module.exports = function (config) {
-  return new Deamonix(config);
-};
+function daemonix(config) {
+  return new Daemonix(config);
+}
+
+module.exports = daemonix;
+module.exports.daemonix = daemonix;
+module.exports.default = daemonix;

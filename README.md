@@ -53,7 +53,7 @@ In TypeScript, `import { App }` from `daemonix` and `implements App` on your cla
 TypeScript:
 
 ```typescript
-import daemonix, { App } from 'daemonix';
+import { daemonix, App } from 'daemonix';
 
 class MyApp implements App {
 
@@ -112,7 +112,7 @@ language; only the import/syntax differs.
 TypeScript:
 
 ```typescript
-import daemonix, { App } from 'daemonix';
+import { daemonix, App } from 'daemonix';
 
 class MyApp implements App {
 
