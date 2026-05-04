@@ -245,28 +245,28 @@ for that combination, and it is the column you should be aiming for.
 
 ### Feature Matrix
 
-Legend: ✅ first-class · ⚠️ partial / awkward · ❌ not supported · ➖ explicitly out of scope (good thing)
+Legend: ✅ first-class · ⚠️ partial / awkward / opinionated · ❌ not supported · ➖ explicitly out of scope (good thing)
 
-| Concern                                                   | **Daemonix** | **Daemonix + orchestrator** | PM2         | forever | naught | nodemon | native `cluster` | systemd / Docker / k8s _alone_ |
-| --------------------------------------------------------- | ------------ | --------------------------- | ----------- | ------- | ------ | ------- | ---------------- | ------------------------------ |
-| Pure library (no global install, no daemon binary)        | ✅           | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               | ❌                             |
-| Single, narrow responsibility (SRP)                       | ✅           | ✅                          | ❌          | ⚠️      | ⚠️     | ⚠️      | ✅               | ✅                             |
-| Multi-CPU clustering with auto worker count               | ✅           | ✅                          | ✅          | ❌      | ✅     | ❌      | ⚠️ (manual)      | ❌                             |
-| Coherent POSIX signal handling (SIGINT/SIGTERM funneled)  | ✅           | ✅                          | ⚠️          | ❌      | ⚠️     | ❌      | ❌               | ⚠️                             |
-| Graceful shutdown lifecycle (`init` / `dinit`)            | ✅           | ✅                          | ⚠️ (events) | ❌      | ⚠️     | ❌      | ❌               | ❌                             |
-| Bounded shutdown timeout with forced kill                 | ✅           | ✅                          | ✅          | ❌      | ⚠️     | ❌      | ❌               | ✅                             |
-| Restart on uncaught exception (controlled)                | ✅           | ✅                          | ✅          | ✅      | ✅     | ⚠️      | ❌               | ⚠️ (whole container)           |
-| Auto start/stop with the server, container, or cluster    | ❌           | ✅                          | ⚠️          | ❌      | ❌     | ❌      | ❌               | ✅                             |
-| 12-factor logs to stdout/stderr (no log files)            | ✅           | ✅                          | ❌ (own)    | ❌      | ⚠️     | ⚠️      | ✅               | ✅                             |
-| 12-factor config from the environment                     | ✅           | ✅                          | ⚠️ (JSON)   | ⚠️      | ⚠️     | ⚠️      | ✅               | ✅                             |
-| No PID files, no state on disk                            | ✅           | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               | ✅                             |
-| Container-native (PID 1 friendly, no double supervisor)   | ✅           | ✅                          | ❌          | ❌      | ⚠️     | ❌      | ✅               | ✅                             |
-| Works under any orchestrator (k8s, ECS, Nomad, Cloud Run) | ✅           | ✅                          | ⚠️          | ⚠️      | ⚠️     | ❌      | ✅               | n/a                            |
-| Tiny dependency footprint                                 | ✅ (2 deps)  | ✅ (2 deps)                 | ❌ (large)  | ⚠️      | ⚠️     | ⚠️      | ✅               | n/a                            |
-| TypeScript types shipped                                  | ✅           | ✅                          | ⚠️          | ❌      | ❌     | ⚠️      | ✅ (via @types)  | n/a                            |
-| Bundles a deploy / monitoring / log-rotation product      | ➖           | ➖                          | ✅ (PM2+)   | ❌      | ❌     | ❌      | ➖               | ➖                             |
-| File-watching / dev reload                                | ➖           | ➖                          | ✅          | ✅      | ❌     | ✅      | ❌               | ❌                             |
-| Windows support                                           | ➖           | ➖                          | ✅          | ✅      | ❌     | ✅      | ✅               | ⚠️                             |
+| Concern                                                   | **Daemonix** | **Orchestrator (systemd / Docker / k8s)** | **Daemonix + Orchestrator** | PM2         | forever | naught | nodemon | native `cluster` |
+| --------------------------------------------------------- | ------------ |-------------------------------------------| --------------------------- | ----------- | ------- | ------ | ------- | ---------------- |
+| Pure library (no global install, no daemon binary)        | ✅           | ❌                                         | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
+| Single, narrow responsibility (SRP)                       | ✅           | ✅                                         | ✅                          | ❌          | ⚠️      | ⚠️     | ⚠️      | ✅               |
+| Multi-CPU clustering with auto worker count               | ✅           | ❌                                         | ✅                          | ✅          | ❌      | ✅     | ❌      | ⚠️ (manual)      |
+| Coherent POSIX signal handling (SIGINT/SIGTERM funneled)  | ✅           | ⚠️                                        | ✅                          | ⚠️          | ❌      | ⚠️     | ❌      | ❌               |
+| Graceful shutdown lifecycle (`init` / `dinit`)            | ✅           | ❌                                         | ✅                          | ⚠️ (events) | ❌      | ⚠️     | ❌      | ❌               |
+| Bounded shutdown timeout with forced kill                 | ✅           | ✅                                         | ✅                          | ✅          | ❌      | ⚠️     | ❌      | ❌               |
+| Restart on uncaught exception (controlled)                | ✅           | ⚠️ (whole container)                      | ✅                          | ✅          | ✅      | ✅     | ⚠️      | ❌               |
+| Auto start/stop with the server, container, or cluster    | ❌           | ✅                                         | ✅                          | ⚠️          | ❌      | ❌     | ❌      | ❌               |
+| 12-factor logs to stdout/stderr (no log files)            | ✅           | ✅                                         | ✅                          | ❌ (own)    | ❌      | ⚠️     | ⚠️      | ✅               |
+| 12-factor config from the environment                     | ✅           | ✅                                         | ✅                          | ⚠️ (JSON)   | ⚠️      | ⚠️     | ⚠️      | ✅               |
+| No PID files, no state on disk                            | ✅           | ✅                                         | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
+| Container-native (PID 1 friendly, no double supervisor)   | ✅           | ✅                                         | ✅                          | ❌          | ❌      | ⚠️     | ❌      | ✅               |
+| Works under any orchestrator (k8s, ECS, Nomad, Cloud Run) | ✅           | n/a                                       | ✅                          | ⚠️          | ⚠️      | ⚠️     | ❌      | ✅               |
+| Tiny dependency footprint                                 | ✅ (2 deps)  | n/a                                       | ✅ (2 deps)                 | ❌ (large)  | ⚠️      | ⚠️     | ⚠️      | ✅               |
+| TypeScript types shipped                                  | ✅           | n/a                                       | ✅                          | ⚠️          | ❌      | ❌     | ⚠️      | ✅ (via @types)  |
+| Bundles a deploy / monitoring / log-rotation product      | ➖           | ➖                                         | ➖                          | ✅ (PM2+)   | ❌      | ❌     | ❌      | ➖               |
+| File-watching / dev reload                                | ➖           | ❌                                         | ➖                          | ✅          | ✅      | ❌     | ✅      | ❌               |
+| Windows support                                           | ➖           | ⚠️                                        | ➖                          | ✅          | ✅      | ❌     | ✅      | ✅               |
 
 The rows marked ➖ for Daemonix are **deliberate non-goals**. We treat the absence of those features as a feature.
 
@@ -275,13 +275,13 @@ A few notes on how to read the matrix:
 - **Daemonix** by itself does not know how to start your service when the machine boots, or how to stop it
   cleanly when the machine shuts down. That is a job for the OS / orchestrator. So Daemonix gets a ❌ on the
   "auto start/stop with the server, container, or cluster" row, on purpose.
-- **Daemonix + orchestrator** is the intended deployment shape. The orchestrator handles boot, host failure,
+- **Daemonix + Orchestrator** is the intended deployment shape. The orchestrator handles boot, host failure,
   scaling, and shutdown lifecycle; Daemonix handles in-process clustering, signal coherence, and graceful
   `dinit()`. Together they cover every row.
-- The **systemd / Docker / k8s _alone_** column specifically describes the case where you try to use those
-  tools _without_ Daemonix or any other in-process supervisor. The orchestrator can keep _a_ process alive,
-  but it has no way to cluster a single Node.js process across CPU cores, no way to call your `dinit()`
-  before SIGKILL, and no way to coalesce noisy POSIX signals into one clean shutdown event.
+- The **Orchestrator (systemd / Docker / k8s)** column specifically describes the case where you try to use
+  those tools _without_ Daemonix or any other in-process supervisor. The orchestrator can keep _a_ process
+  alive, but it has no way to cluster a single Node.js process across CPU cores, no way to call your
+  `dinit()` before SIGKILL, and no way to coalesce noisy POSIX signals into one clean shutdown event.
 
 ### Why not PM2?
 
