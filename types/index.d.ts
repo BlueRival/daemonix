@@ -1,20 +1,34 @@
 declare module 'daemonix' {
-  // Defining interfaces
-
-  interface App {
+  export interface App {
+    /**
+     * Initialize the application using a Node-style callback.
+     * Call `done(err)` when finished. Returns void.
+     */
     init(done: (err?: Error | null) => void): void;
-
+    /**
+     * Initialize the application using a Promise.
+     * Takes no arguments and returns a Promise that resolves when finished.
+     * @throws {Error} The returned Promise may reject with an Error.
+     */
     init(): Promise<void>;
 
+    /**
+     * De-initialize / shut down the application using a Node-style callback.
+     * Call `done(err)` when finished. Returns void.
+     */
     dinit(done: (err?: Error | null) => void): void;
-
+    /**
+     * De-initialize / shut down the application using a Promise.
+     * Takes no arguments and returns a Promise that resolves when finished.
+     * @throws {Error} The returned Promise may reject with an Error.
+     */
     dinit(): Promise<void>;
   }
 
-  // Here typeof AppInterface is used to represent a Class that implements the AppInterface
-  type AppClass = new (env: string) => App;
+  // AppClass represents a class constructor that produces an App instance
+  export type AppClass = new (env: string) => App;
 
-  interface LogFn {
+  export interface Logger {
     (
       level: 'error' | 'info' | 'warning',
       message: string,
@@ -22,19 +36,20 @@ declare module 'daemonix' {
     ): void;
   }
 
-  interface WorkersOptions {
+  export interface WorkersOptions {
     count?: number | 'auto';
     restartTimeout?: number;
     shutdownTimeout?: number;
     exitOnException?: boolean;
   }
 
-  interface DaemonixOptions {
-    app: AppClass; // Now App represents a Class type
-    log?: LogFn;
+  export interface Options {
+    app: AppClass;
+    log?: Logger;
     workers?: WorkersOptions;
   }
 
-  const daemonix: (options: DaemonixOptions) => void;
-  export = daemonix;
+  export function daemonix(options: Options): void;
+
+  export default function daemonix(options: Options): void;
 }

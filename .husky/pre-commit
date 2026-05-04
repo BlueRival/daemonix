@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+
+# GUI git clients (GitKraken, Sourcetree, GitHub Desktop, Tower, etc.) launch
+# hooks with a stripped, non-login, non-interactive shell. That means tools
+# installed via nvm / asdf / fnm / homebrew are NOT on PATH and `node`/`npm`/
+# `npx` cannot be found. The block below makes the hook portable across any
+# developer's machine without assuming a specific node install location.
+
+# Resolve the repo root so `.nvmrc` lookups work regardless of where git
+# decided to invoke the hook from.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
+
+# 1. Load nvm if it is installed (covers most macOS/Linux developers).
+#    If the repo has a .nvmrc we honor it; otherwise we fall back to the
+#    user's default node alias.
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh" --no-use >/dev/null 2>&1
+  if [ -f "$REPO_ROOT/.nvmrc" ]; then
+    (cd "$REPO_ROOT" && nvm use >/dev/null 2>&1) || nvm use default >/dev/null 2>&1 || true
+    # The subshell above can't export PATH back to us, so re-resolve here.
+    nvm use "$(cat "$REPO_ROOT/.nvmrc")" >/dev/null 2>&1 || nvm use default >/dev/null 2>&1 || true
+  else
+    nvm use default >/dev/null 2>&1 || true
+  fi
+fi
+
+# 2. Load asdf if it is installed (asdf reads .tool-versions / .nvmrc on its
+#    own once shimmed onto PATH).
+if [ -s "$HOME/.asdf/asdf.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.asdf/asdf.sh" >/dev/null 2>&1
+fi
+
+# 3. Load fnm if it is installed.
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env)" >/dev/null 2>&1 || true
+fi
+
+# 4. Add the common system locations where node may live (homebrew on Apple
+#    Silicon and Intel, plus the standard /usr/local/bin).
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+# 5. Verify node is now reachable; bail with a helpful message if not.
+if ! command -v node >/dev/null 2>&1; then
+  echo "husky pre-commit: 'node' was not found on PATH." >&2
+  echo "If you use a node version manager, ensure it is installed at one of:" >&2
+  echo "  ~/.nvm, ~/.asdf, or that fnm/homebrew node is on PATH." >&2
+  exit 1
+fi
+
+# Run formatter and linter using the locally installed dev dependencies.
+# `npx` resolves these from ./node_modules/.bin without needing global installs.
+npx --no-install prettier --write . || exit 1
+npx --no-install eslint . || exit 1

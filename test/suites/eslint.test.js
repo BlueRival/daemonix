@@ -1,26 +1,24 @@
 'use strict';
 
-const glob = require('glob');
-const CLIEngine = require('eslint').CLIEngine;
+const { glob } = require('glob');
+const { ESLint } = require('eslint');
 const assert = require('assert');
 
 // build a list of all files to check
 const paths = [];
 
-glob.sync(`${process.cwd()}/*.js`).forEach(file => paths.push(file));
-glob.sync(`${process.cwd()}/lib/**/*.js`).forEach(file => paths.push(file));
-glob.sync(`${process.cwd()}/test/**/*.js`).forEach(file => paths.push(file));
+paths.push(...glob.sync(`${process.cwd()}/*.js`));
+paths.push(...glob.sync(`${process.cwd()}/lib/**/*.js`));
+paths.push(...glob.sync(`${process.cwd()}/test/**/*.js`));
 
-// instantiate ESLint Engine, use .eslintrc.json file (which your IDE should also use to inspect code while you work)
-let engine = null;
+// instantiate ESLint, use eslint.config.js (flat config)
+let eslint = null;
 
 function generateTest(path) {
-  it(`should validate ${path}`, function () {
-    assert(engine, 'ESLint Engine not created');
+  it(`should validate ${path}`, async function () {
+    assert(eslint, 'ESLint instance not created');
 
-    // check all the files
-    const results = engine.executeOnFiles([path]).results;
-
+    const results = await eslint.lintFiles([path]);
     const messages = results[0].messages;
 
     if (messages.length > 0) {
@@ -39,10 +37,7 @@ function formatMessages(path, messages) {
 
 // generate tests for each file found
 describe('ESLint', function () {
-  engine = new CLIEngine({
-    envs: ['node', 'mocha'],
-    useEslintrc: true,
-  });
+  eslint = new ESLint();
 
   paths.forEach(path => generateTest(path));
 });

@@ -51,6 +51,7 @@ etc
 /test
 
 # Other dev files
+coverage
 .gitignore
 .npmignore
 tsconfig.json
