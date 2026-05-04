@@ -28,12 +28,12 @@ declare module 'daemonix' {
   // AppClass represents a class constructor that produces an App instance
   export type AppClass = new (env: string) => App;
 
+  export type LogLevel = 'error' | 'info' | 'warning';
+
+  export type LogMeta = string | number | boolean | object | null | undefined;
+
   export interface Logger {
-    (
-      level: 'error' | 'info' | 'warning',
-      message: string,
-      meta?: Record<string, unknown>,
-    ): void;
+    (level: LogLevel, message: string, meta?: LogMeta): void;
   }
 
   export interface WorkersOptions {
