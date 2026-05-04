@@ -243,29 +243,46 @@ outward — knowing when to start it on boot, restarting the host or container, 
 stopping it on shutdown. Neither layer should try to do the other's job. The feature matrix below has a column
 for that combination, and it is the column you should be aiming for.
 
+A well-architected system puts each concern at the layer that owns it, and only at that layer. Orchestration —
+"is this host alive, should this container be running, drain traffic, scale out" — lives _outside_ the
+process, because that is the only place it can be observed and acted on. In-process concerns — "how do I
+cluster this Node.js runtime across CPU cores, how do I funnel POSIX signals into a single coherent shutdown
+event, how do I run my app's `dinit()` before the kernel kills me" — live _inside_ the process, because that
+is the only place they can be observed and acted on. Collapsing all of these concerns into a single layer —
+the way PM2, forever, and naught try to — is the wrong architectural choice: it duplicates work the
+orchestrator already does, hides the real workers from the layer that is supposed to supervise them, and
+couples your deployment story to a tool that has no business being in that conversation.
+
+The pairing that _is_ correct is POSIX signal handling plus Node.js clustering. Those two are genuinely
+intertwined and cannot be cleanly decoupled — the cluster master is the only thing that can fan a single OS
+signal out to N workers in a deterministic order, and the worker-side signal trap is the only thing that can
+escalate from "graceful `dinit()`" to "forced exit" on a bounded timeout. Daemonix wraps exactly that pair,
+and nothing else. It is the minimal surface area required to handle either concern correctly, which is why
+handling them together is not scope creep — it is the smallest honest unit of work at this layer.
+
 ### Feature Matrix
 
 Legend: ✅ first-class · ⚠️ partial / awkward / opinionated · ❌ not supported · ➖ explicitly out of scope (good thing)
 
 | Concern                                                   | **Daemonix** | **Orchestrator (systemd / Docker / k8s)** | **Daemonix + Orchestrator** | PM2         | forever | naught | nodemon | native `cluster` |
-| --------------------------------------------------------- | ------------ |-------------------------------------------| --------------------------- | ----------- | ------- | ------ | ------- | ---------------- |
-| Pure library (no global install, no daemon binary)        | ✅           | ❌                                         | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
-| Single, narrow responsibility (SRP)                       | ✅           | ✅                                         | ✅                          | ❌          | ⚠️      | ⚠️     | ⚠️      | ✅               |
-| Multi-CPU clustering with auto worker count               | ✅           | ❌                                         | ✅                          | ✅          | ❌      | ✅     | ❌      | ⚠️ (manual)      |
+| --------------------------------------------------------- | ------------ | ----------------------------------------- | --------------------------- | ----------- | ------- | ------ | ------- | ---------------- |
+| Pure library (no global install, no daemon binary)        | ✅           | ❌                                        | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
+| Single, narrow responsibility (SRP)                       | ✅           | ✅                                        | ✅                          | ❌          | ⚠️      | ⚠️     | ⚠️      | ✅               |
+| Multi-CPU clustering with auto worker count               | ✅           | ❌                                        | ✅                          | ✅          | ❌      | ✅     | ❌      | ⚠️ (manual)      |
 | Coherent POSIX signal handling (SIGINT/SIGTERM funneled)  | ✅           | ⚠️                                        | ✅                          | ⚠️          | ❌      | ⚠️     | ❌      | ❌               |
-| Graceful shutdown lifecycle (`init` / `dinit`)            | ✅           | ❌                                         | ✅                          | ⚠️ (events) | ❌      | ⚠️     | ❌      | ❌               |
-| Bounded shutdown timeout with forced kill                 | ✅           | ✅                                         | ✅                          | ✅          | ❌      | ⚠️     | ❌      | ❌               |
+| Graceful shutdown lifecycle (`init` / `dinit`)            | ✅           | ❌                                        | ✅                          | ⚠️ (events) | ❌      | ⚠️     | ❌      | ❌               |
+| Bounded shutdown timeout with forced kill                 | ✅           | ✅                                        | ✅                          | ✅          | ❌      | ⚠️     | ❌      | ❌               |
 | Restart on uncaught exception (controlled)                | ✅           | ⚠️ (whole container)                      | ✅                          | ✅          | ✅      | ✅     | ⚠️      | ❌               |
-| Auto start/stop with the server, container, or cluster    | ❌           | ✅                                         | ✅                          | ⚠️          | ❌      | ❌     | ❌      | ❌               |
-| 12-factor logs to stdout/stderr (no log files)            | ✅           | ✅                                         | ✅                          | ❌ (own)    | ❌      | ⚠️     | ⚠️      | ✅               |
-| 12-factor config from the environment                     | ✅           | ✅                                         | ✅                          | ⚠️ (JSON)   | ⚠️      | ⚠️     | ⚠️      | ✅               |
-| No PID files, no state on disk                            | ✅           | ✅                                         | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
-| Container-native (PID 1 friendly, no double supervisor)   | ✅           | ✅                                         | ✅                          | ❌          | ❌      | ⚠️     | ❌      | ✅               |
+| Auto start/stop with the server, container, or cluster    | ❌           | ✅                                        | ✅                          | ⚠️          | ❌      | ❌     | ❌      | ❌               |
+| 12-factor logs to stdout/stderr (no log files)            | ✅           | ✅                                        | ✅                          | ❌ (own)    | ❌      | ⚠️     | ⚠️      | ✅               |
+| 12-factor config from the environment                     | ✅           | ✅                                        | ✅                          | ⚠️ (JSON)   | ⚠️      | ⚠️     | ⚠️      | ✅               |
+| No PID files, no state on disk                            | ✅           | ✅                                        | ✅                          | ❌          | ❌      | ❌     | ❌      | ✅               |
+| Container-native (PID 1 friendly, no double supervisor)   | ✅           | ✅                                        | ✅                          | ❌          | ❌      | ⚠️     | ❌      | ✅               |
 | Works under any orchestrator (k8s, ECS, Nomad, Cloud Run) | ✅           | n/a                                       | ✅                          | ⚠️          | ⚠️      | ⚠️     | ❌      | ✅               |
 | Tiny dependency footprint                                 | ✅ (2 deps)  | n/a                                       | ✅ (2 deps)                 | ❌ (large)  | ⚠️      | ⚠️     | ⚠️      | ✅               |
 | TypeScript types shipped                                  | ✅           | n/a                                       | ✅                          | ⚠️          | ❌      | ❌     | ⚠️      | ✅ (via @types)  |
-| Bundles a deploy / monitoring / log-rotation product      | ➖           | ➖                                         | ➖                          | ✅ (PM2+)   | ❌      | ❌     | ❌      | ➖               |
-| File-watching / dev reload                                | ➖           | ❌                                         | ➖                          | ✅          | ✅      | ❌     | ✅      | ❌               |
+| Bundles a deploy / monitoring / log-rotation product      | ➖           | ➖                                        | ➖                          | ✅ (PM2+)   | ❌      | ❌     | ❌      | ➖               |
+| File-watching / dev reload                                | ➖           | ❌                                        | ➖                          | ✅          | ✅      | ❌     | ✅      | ❌               |
 | Windows support                                           | ➖           | ⚠️                                        | ➖                          | ✅          | ✅      | ❌     | ✅      | ✅               |
 
 The rows marked ➖ for Daemonix are **deliberate non-goals**. We treat the absence of those features as a feature.
