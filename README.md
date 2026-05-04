@@ -53,11 +53,12 @@ In TypeScript, `import { App }` from `daemonix` and `implements App` on your cla
 TypeScript:
 
 ```typescript
-import { daemonix, App } from 'daemonix';
+import { daemonix, App, Options } from 'daemonix';
 
 class MyApp implements App {
 
-  constructor() {
+  constructor(env: string) {
+    // env is the NODE_ENV-style environment string passed by Daemonix
   }
 
   async init(): Promise<void> {
@@ -70,7 +71,9 @@ class MyApp implements App {
 
 }
 
-daemonix({ app: MyApp });
+const options: Options = { app: MyApp };
+
+daemonix(options);
 ```
 
 JavaScript:
@@ -112,9 +115,19 @@ language; only the import/syntax differs.
 TypeScript:
 
 ```typescript
-import { daemonix, App } from 'daemonix';
+import {
+  daemonix,
+  App,
+  Options,
+  Logger,
+  WorkersOptions,
+} from 'daemonix';
 
 class MyApp implements App {
+
+  constructor(env: string) {
+    // env is provided by Daemonix
+  }
 
   async init(): Promise<void> {
     // startup your code
@@ -126,20 +139,26 @@ class MyApp implements App {
 
 }
 
-daemonix({
+const log: Logger = (level, message, meta) => {
+  // level is 'error' | 'info' | 'warning'
+  // message is always a string
+  // meta can be an Error or some other simple JSON object
+};
+
+const workers: WorkersOptions = {
+  count: 'auto',          // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
+  restartTimeout: 1000,   // number of milliseconds to wait before restarting a failed worker. default: 1000
+  shutdownTimeout: 30000, // number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
+  exitOnException: true,  // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
+};
+
+const options: Options = {
   app: MyApp,
-  log: (level, message, meta) => {
-    // level can be 'error' | 'info' | 'warning'
-    // message will always be a string
-    // meta can be an Error or some other simple JSON object
-  },
-  workers: {
-    count: 'auto',          // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
-    restartTimeout: 1000,   // number of milliseconds to wait before restarting a failed worker. default: 1000
-    shutdownTimeout: 30000, // number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
-    exitOnException: true,  // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
-  },
-});
+  log,
+  workers,
+};
+
+daemonix(options);
 ```
 
 JavaScript:

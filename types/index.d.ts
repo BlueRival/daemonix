@@ -28,7 +28,7 @@ declare module 'daemonix' {
   // AppClass represents a class constructor that produces an App instance
   export type AppClass = new (env: string) => App;
 
-  export interface LogFn {
+  export interface Logger {
     (
       level: 'error' | 'info' | 'warning',
       message: string,
@@ -43,13 +43,13 @@ declare module 'daemonix' {
     exitOnException?: boolean;
   }
 
-  export interface DaemonixOptions {
+  export interface Options {
     app: AppClass;
-    log?: LogFn;
+    log?: Logger;
     workers?: WorkersOptions;
   }
 
-  export function daemonix(options: DaemonixOptions): void;
+  export function daemonix(options: Options): void;
 
-  export default daemonix;
+  export default function daemonix(options: Options): void;
 }
