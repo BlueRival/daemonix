@@ -3,12 +3,12 @@
 Daemonix is an awesome tool for managing NodeJS processes/clusters as a daemon in Linux/Unix environments. Daemonix
 will:
 
-* Cluster your code to take advantage of multiple CPUs
-* Manage uncaught exceptions by restarting in a controlled way
-* Handle restarting workers that unexpectedly die or become unresponsive.
-* Work with any CI/CD pattern
-* Work with any process management, whether OS based or home brewed: SystemV, Upstart, PM2, etc.
-* Have no opinion about your code aside from the instantiate, init, dinit life cycle.
+- Cluster your code to take advantage of multiple CPUs
+- Manage uncaught exceptions by restarting in a controlled way
+- Handle restarting workers that unexpectedly die or become unresponsive.
+- Work with any CI/CD pattern
+- Work with any process management, whether OS based or home brewed: SystemV, Upstart, PM2, etc.
+- Have no opinion about your code aside from the instantiate, init, dinit life cycle.
 
 No, we will never try to make this work for Windows in any way shape or form. It may or may not work for Windows as is,
 and we don't care. ;-)
@@ -23,13 +23,13 @@ CLI tool.
 
 ## Table of Contents
 
-* [Basic Usage](#basic-usage)
-* [Advanced Usage](#advanced-usage)
-* [CLI Removed](#cli-removed)
-* [Deep Dive on Daemonix](#deep-dive-on-daemonix)
-    * [Life-Cycle](#life-cycle)
-    * [Signals Processing](#signals-processing)
-* [Contribute](#contribute)
+- [Basic Usage](#basic-usage)
+- [Advanced Usage](#advanced-usage)
+- [CLI Removed](#cli-removed)
+- [Deep Dive on Daemonix](#deep-dive-on-daemonix)
+  - [Life-Cycle](#life-cycle)
+  - [Signals Processing](#signals-processing)
+- [Contribute](#contribute)
 
 ## Basic Usage
 
@@ -43,8 +43,8 @@ runs at graceful shutdown.
 
 `init()` and `dinit()` each accept exactly one of two forms — pick one, don't mix:
 
-* **Promise form:** no parameters, returns `Promise<void>` (may reject with an `Error`).
-* **Callback form:** accepts a single Node-style callback `done(err?: Error | null) => void` and returns `void`. Call
+- **Promise form:** no parameters, returns `Promise<void>` (may reject with an `Error`).
+- **Callback form:** accepts a single Node-style callback `done(err?: Error | null) => void` and returns `void`. Call
   `done()` (or `done(err)` on failure) when finished.
 
 In TypeScript, `import { App }` from `daemonix` and `implements App` on your class so the IDE/linter knows `init()` and
@@ -56,7 +56,6 @@ TypeScript:
 import { daemonix, App, Options } from 'daemonix';
 
 class MyApp implements App {
-
   constructor(env: string) {
     // env is the NODE_ENV-style environment string passed by Daemonix
   }
@@ -68,7 +67,6 @@ class MyApp implements App {
   async dinit(): Promise<void> {
     // graceful shutdown
   }
-
 }
 
 const options: Options = { app: MyApp };
@@ -82,9 +80,7 @@ JavaScript:
 const daemonix = require('daemonix');
 
 class MyApp {
-
-  constructor() {
-  }
+  constructor() {}
 
   async init() {
     // graceful startup
@@ -93,7 +89,6 @@ class MyApp {
   async dinit() {
     // graceful shutdown
   }
-
 }
 
 daemonix({ app: MyApp });
@@ -105,7 +100,7 @@ like
 `forever`. If the system has more than 2 CPU cores, Daemonix will create one worker process for each CPU core.
 
 If any worker dies, it will be restarted in 1000 ms. If the main process exits, then it will give each worker up to
-30000 ms to return from ```dinit()```.
+30000 ms to return from `dinit()`.
 
 ## Advanced Usage
 
@@ -115,16 +110,9 @@ language; only the import/syntax differs.
 TypeScript:
 
 ```typescript
-import {
-  daemonix,
-  App,
-  Options,
-  Logger,
-  WorkersOptions,
-} from 'daemonix';
+import { daemonix, App, Options, Logger, WorkersOptions } from 'daemonix';
 
 class MyApp implements App {
-
   constructor(env: string) {
     // env is provided by Daemonix
   }
@@ -136,7 +124,6 @@ class MyApp implements App {
   async dinit(): Promise<void> {
     // shutdown your code
   }
-
 }
 
 const log: Logger = (level, message, meta) => {
@@ -146,10 +133,10 @@ const log: Logger = (level, message, meta) => {
 };
 
 const workers: WorkersOptions = {
-  count: 'auto',          // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
-  restartTimeout: 1000,   // number of milliseconds to wait before restarting a failed worker. default: 1000
+  count: 'auto', // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
+  restartTimeout: 1000, // number of milliseconds to wait before restarting a failed worker. default: 1000
   shutdownTimeout: 30000, // number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
-  exitOnException: true,  // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
+  exitOnException: true, // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
 };
 
 const options: Options = {
@@ -167,7 +154,6 @@ JavaScript:
 const daemonix = require('daemonix');
 
 class MyApp {
-
   async init() {
     // startup your code
   }
@@ -175,21 +161,20 @@ class MyApp {
   async dinit() {
     // shutdown your code
   }
-
 }
 
 daemonix({
   app: MyApp,
-  log: function(level, message, meta) {
+  log: function (level, message, meta) {
     // level can be 'error' | 'info' | 'warning'
     // message will always be a string
     // meta can be an Error or some other simple JSON object
   },
   workers: {
-    count: 'auto',          // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
-    restartTimeout: 1000,   // number of milliseconds to wait before restarting a failed worker. default: 1000
+    count: 'auto', // number > 0, or 'auto'. 'auto' uses one worker per CPU core with a minimum of 2 workers. default: 1 worker
+    restartTimeout: 1000, // number of milliseconds to wait before restarting a failed worker. default: 1000
     shutdownTimeout: 30000, // number of milliseconds to wait on app.dinit() to return before the worker is killed. default: 30000
-    exitOnException: true,  // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
+    exitOnException: true, // if TRUE, a child process will exit on uncaught exception and restart. We HIGHLY recommend only setting this to FALSE for testing. default: TRUE
   },
 });
 ```
@@ -258,49 +243,49 @@ First thing to describe is how Daemonix manages the life cycle of your daemon. W
 this example, but you could be starting your daemon from SystemV, UpStart, or any other process start/stop management
 tool in your OS.
 
-* Start your daemon with something like `node server.js`
-* Once you call `daemonix( { app: App } )` Daemonix will take over managing the process.
-* Daemonix will perform some checks and inspect options passed to `daemonix()`.
-* Daemonix will determine if it is running in master mode, or in worker mode. The first process is always master. Only
+- Start your daemon with something like `node server.js`
+- Once you call `daemonix( { app: App } )` Daemonix will take over managing the process.
+- Daemonix will perform some checks and inspect options passed to `daemonix()`.
+- Daemonix will determine if it is running in master mode, or in worker mode. The first process is always master. Only
   the master process creates worker processes.
   Daemonix will create all of the worker processes.
-    * Master Mode
-        * Daemonix will see that it started as the master process.
-        * Daemonix will determine the number of works needed based on options passed to `daemonix()`. Default for number
-          of workers is `auto`, which indicates one worker per CPU core. Note that a single CPU core with
-          Hyper-Threading
-          will only get one worker in `auto` mode. If an exact, positive integer is supplied in options, then that exact
-          number of workers will be used regardless of CPU count.
-        * Daemonix will create a [Node.JS cluster](https://nodejs.org/docs/latest-v12.x/api/cluster.html)
-        * Daemonix will create the number of workers needed.
-        * Daemonix will keep the correct number of workers running. If a worker exits unexpectedly, or becomes
-          unresponsive, Daemonix will wait a timeout amount of time, and then will kill the existing worker if needed
-          with
-          graceful shutdown logic, then start a new worker to replace the failed worker.
-        * If a shutdown signal is received from the OS, via Ctrl+C, or a kill command, or any other OS signal for a
-          process to exit, Daemonix will propagate the signal and will trigger a graceful shutdown in each worker.
-          Daemonix will wait for a timeout amount of time for each worker to exit. If a worker does not exit within that
-          timeout, Daemonix will force the process to exit. This is a critical step. Depending on how the process was
-          started, and depending on what kind of signal was passed, the signal may propagate by the OS to child worker
-          processes in the cluster, or may just stop at the master process. It is essential that the worker processes
-          are
-          started and stopped by the master in a consistent manner to ensure graceful start-up and shutdown occurs.
-          Daemonix handles coordinating these signals and ensures all processes start and stop as expected regardless of
-          the OS or signal used.
-        * Once all workers have exited the master exits
-    * Worker Mode
-        * Daemonix will see that it is started as a worker process.
-        * Daemonix will instantiate an instance of App class passed to `daemonix()`.
-        * Daemonix will then call `app.init()`. If init does not return within the timeout, Daemonix will exit and
-          the master process will restart the worker.
-        * All code in app runs on its own. The only thing Daemonix is doing is looking for signals from the master
-          process and uncaught exceptions.
-        * If an exit signal is received or an uncaught exception is thrown, Daemonix will call `app.dinit()` to shutdown
-          the worker process. If dinit takes more than timeout amount of time, Daemonix forcibly kills the process. In
-          the
-          event of an uncaught exception, the worker is exiting unexpectedly according to the master process'
-          perspective.
-          In this case the master process will create a new worker to replace the worker that exited.
+  - Master Mode
+    - Daemonix will see that it started as the master process.
+    - Daemonix will determine the number of works needed based on options passed to `daemonix()`. Default for number
+      of workers is `auto`, which indicates one worker per CPU core. Note that a single CPU core with
+      Hyper-Threading
+      will only get one worker in `auto` mode. If an exact, positive integer is supplied in options, then that exact
+      number of workers will be used regardless of CPU count.
+    - Daemonix will create a [Node.JS cluster](https://nodejs.org/docs/latest-v12.x/api/cluster.html)
+    - Daemonix will create the number of workers needed.
+    - Daemonix will keep the correct number of workers running. If a worker exits unexpectedly, or becomes
+      unresponsive, Daemonix will wait a timeout amount of time, and then will kill the existing worker if needed
+      with
+      graceful shutdown logic, then start a new worker to replace the failed worker.
+    - If a shutdown signal is received from the OS, via Ctrl+C, or a kill command, or any other OS signal for a
+      process to exit, Daemonix will propagate the signal and will trigger a graceful shutdown in each worker.
+      Daemonix will wait for a timeout amount of time for each worker to exit. If a worker does not exit within that
+      timeout, Daemonix will force the process to exit. This is a critical step. Depending on how the process was
+      started, and depending on what kind of signal was passed, the signal may propagate by the OS to child worker
+      processes in the cluster, or may just stop at the master process. It is essential that the worker processes
+      are
+      started and stopped by the master in a consistent manner to ensure graceful start-up and shutdown occurs.
+      Daemonix handles coordinating these signals and ensures all processes start and stop as expected regardless of
+      the OS or signal used.
+    - Once all workers have exited the master exits
+  - Worker Mode
+    - Daemonix will see that it is started as a worker process.
+    - Daemonix will instantiate an instance of App class passed to `daemonix()`.
+    - Daemonix will then call `app.init()`. If init does not return within the timeout, Daemonix will exit and
+      the master process will restart the worker.
+    - All code in app runs on its own. The only thing Daemonix is doing is looking for signals from the master
+      process and uncaught exceptions.
+    - If an exit signal is received or an uncaught exception is thrown, Daemonix will call `app.dinit()` to shutdown
+      the worker process. If dinit takes more than timeout amount of time, Daemonix forcibly kills the process. In
+      the
+      event of an uncaught exception, the worker is exiting unexpectedly according to the master process'
+      perspective.
+      In this case the master process will create a new worker to replace the worker that exited.
 
 ### Signals Processing
 
@@ -405,5 +390,3 @@ Things to do:
 - Supported versions of node can be determined by inspecting engines.node in package.json.
 - Code style and patterns must conform to standards in .eslintrc.json.
 - Code must be awesome!
-
-

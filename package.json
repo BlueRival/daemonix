@@ -13,10 +13,12 @@
     "doublescore": "^1.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "eslint": "^10.3.0",
     "glob": "^13.0.6",
-    "mocha": "^10.8.2",
+    "globals": "^17.6.0",
+    "mocha": "^11.7.5",
     "prettier": "^3.8.3"
   },
   "keywords": [
@@ -27,6 +29,8 @@
     "node": ">=16.0.0"
   },
   "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint .",
     "test-watch": "node ./node_modules/mocha/bin/mocha.js -b -u bdd -w --exit test/*.test.js",
     "test": "node ./node_modules/mocha/bin/mocha.js -b -u bdd --exit test/*.test.js"
   },
